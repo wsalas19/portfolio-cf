@@ -17,11 +17,6 @@
 # artifacts
 /temp/
 
-# next.js
-/.next/
-/out/
-/.open-next/
-
 # production
 /build
 
@@ -45,7 +40,6 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
 .claude/
 .claude/*
 
@@ -59,3 +53,6 @@ CLAUDE.md
 .wrangler/
 # Manifiesto generado en build por scripts/generate-content.mjs
 /src/lib/generated/
+# Typegen de vinext (compatibilidad con next/*)
+/.next/
+next-env.d.ts

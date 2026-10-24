@@ -66,8 +66,7 @@ export function ZoomImage({
 						}}
 						className="m-auto max-h-none max-w-none bg-transparent p-0 backdrop:bg-black/90 open:flex open:flex-col open:items-center open:gap-6"
 					>
-						{/*eslint-disable-next-line @next/next/no-img-element -- el visor
-						    sirve la imagen original, no una copia del optimizador */}
+						{/* El visor sirve la imagen original, no una copia del optimizador. */}
 						<img
 							src={expandSrc}
 							alt={alt}
