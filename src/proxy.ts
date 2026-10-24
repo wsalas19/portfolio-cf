@@ -55,6 +55,13 @@ export function proxy(request: NextRequest): NextResponse {
 	response.headers.delete('Server');
 	response.headers.delete('X-Powered-By');
 
+	// El deploy de staging vive en *.workers.dev. No debe competir con el sitio
+	// real en buscadores; el dominio definitivo no lleva este header.
+	const host = request.headers.get('host') ?? '';
+	if (host.endsWith('.workers.dev')) {
+		response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+	}
+
 	return response;
 }
 
