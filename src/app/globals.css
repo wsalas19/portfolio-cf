@@ -66,14 +66,12 @@
 	.glass {
 		background: rgba(18, 18, 18, 0.7);
 		backdrop-filter: blur(12px);
-		-webkit-backdrop-filter: blur(12px);
 		border: 1px solid rgba(255, 255, 255, 0.15);
 	}
 
 	.glass-strong {
 		background: rgba(18, 18, 18, 0.5);
 		backdrop-filter: blur(16px);
-		-webkit-backdrop-filter: blur(16px);
 		border: 1px solid rgba(255, 255, 255, 0.2);
 	}
 
@@ -84,21 +82,18 @@
 	.glass-subtle {
 		background: rgba(255, 255, 255, 0.06);
 		backdrop-filter: blur(8px);
-		-webkit-backdrop-filter: blur(8px);
 		border: 1px solid rgba(255, 255, 255, 0.1);
 	}
 
 	.glass-pink {
 		background: rgba(251, 137, 131, 0.1);
 		backdrop-filter: blur(12px);
-		-webkit-backdrop-filter: blur(12px);
 		border: 1px solid rgba(251, 137, 131, 0.2);
 	}
 
 	.glass-lime {
 		background: rgba(212, 255, 77, 0.12);
 		backdrop-filter: blur(12px);
-		-webkit-backdrop-filter: blur(12px);
 		border: 1px solid rgba(212, 255, 77, 0.3);
 	}
 
