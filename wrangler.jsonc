@@ -8,6 +8,18 @@
   "vars": {
     "NEXT_PUBLIC_SITE_URL": "https://portfolio-cf.wsalas.workers.dev"
   },
+  "kv_namespaces": [
+    {
+      "binding": "VINEXT_KV_CACHE",
+      "id": "ffa407db7e064830b8e06d9476bd80d2"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "CONTENT",
+      "bucket_name": "portfolio-cf-content"
+    }
+  ],
   "main": "vinext/server/fetch-handler",
   "assets": {
     "directory": "dist/client",

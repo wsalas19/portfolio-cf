@@ -21,7 +21,7 @@ const TIME = { hour: "2-digit", minute: "2-digit" } as const;
 interface DocEditorProps {
 	path: string;
 	raw: string;
-	historyUrl: string;
+	historyUrl?: string;
 	images: string[];
 	dirty: boolean;
 	saving: boolean;
@@ -171,8 +171,12 @@ export function DocEditor({
 			form.append("slug", slug);
 
 			const response = await fetch("/api/admin/upload", { method: "POST", body: form });
-			const data = await response.json().catch(() => ({}));
+			const data = (await response.json().catch(() => ({}))) as {
+				error?: string;
+				path?: string;
+			};
 			if (!response.ok) throw new Error(data.error || "Could not upload the image");
+			if (!data.path) throw new Error("Upload did not return a path");
 
 			insert(`![${file.name}](${data.path})`);
 			onUploaded(data.path);
@@ -216,15 +220,17 @@ export function DocEditor({
 				</div>
 
 				<div className="flex items-center gap-2">
-					<a
-						href={historyUrl}
-						target="_blank"
-						rel="noopener noreferrer"
-						className="flex items-center gap-1.5 rounded-md border border-white/15 px-3 py-1.5 text-xs text-gray-300 transition-colors hover:border-white/30 hover:text-white"
-					>
-						History
-						<ExternalLink className="h-3 w-3" />
-					</a>
+					{historyUrl && (
+						<a
+							href={historyUrl}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="flex items-center gap-1.5 rounded-md border border-white/15 px-3 py-1.5 text-xs text-gray-300 transition-colors hover:border-white/30 hover:text-white"
+						>
+							History
+							<ExternalLink className="h-3 w-3" />
+						</a>
+					)}
 
 					{confirmingDelete ? (
 						<span className="flex items-center gap-1 text-xs">

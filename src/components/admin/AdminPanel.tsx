@@ -16,7 +16,7 @@ type Doc = {
 	path: string;
 	sha: string;
 	savedRaw: string;
-	historyUrl: string;
+	historyUrl?: string;
 	images: string[];
 };
 
@@ -38,8 +38,8 @@ class ApiError extends Error {
 
 async function request(url: string, init?: RequestInit): Promise<Record<string, unknown>> {
 	const response = await fetch(url, init);
-	const data = await response.json().catch(() => ({}));
-	if (!response.ok) throw new ApiError(response.status, data.error || "Network error");
+	const data = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+	if (!response.ok) throw new ApiError(response.status, (data.error as string) || "Network error");
 	return data;
 }
 
@@ -130,7 +130,7 @@ export default function AdminPanel() {
 					path: next,
 					sha: data.sha as string,
 					savedRaw,
-					historyUrl: data.historyUrl as string,
+					historyUrl: data.historyUrl as string | undefined,
 					images: (data.images as string[]) ?? [],
 				});
 				setRaw(savedRaw);

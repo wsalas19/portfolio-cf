@@ -6,8 +6,11 @@ import { env } from "@/lib/env";
 // mano, y por eso se quedó listando 1 de los 6 posts y ninguno de los routes de
 // herramientas: un archivo estático no se entera de contenido nuevo. Leyendo los
 // posts reales no puede volver a quedar desincronizado.
-export default function sitemap(): MetadataRoute.Sitemap {
+export const dynamic = "force-dynamic";
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 	const base = env.NEXT_PUBLIC_SITE_URL;
+	const posts = await getAllPosts();
 
 	const staticRoutes: {
 		path: string;
@@ -35,7 +38,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 			priority,
 			changeFrequency,
 		})),
-		...getAllPosts().map((post) => ({
+		...posts.map((post) => ({
 			url: `${base}/blog/${post.slug}`,
 			lastModified: new Date(post.date),
 			changeFrequency: "monthly" as const,

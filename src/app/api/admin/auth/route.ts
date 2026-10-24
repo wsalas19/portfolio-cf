@@ -9,27 +9,9 @@ import {
 import { cookieValue, isAllowedOrigin, json } from "@/lib/admin/server";
 import { env } from "@/lib/env";
 import { Logger } from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const loginSchema = z.object({ password: z.string().min(1).max(200) });
-
-// ponytail: limiter en memoria por instancia, se resetea en cada deploy. Alcanza
-// para un único editor; con más de uno haría falta uno durable.
-const attempts = new Map<string, { count: number; resetTime: number }>();
-const MAX_ATTEMPTS = 5;
-const WINDOW_MS = 15 * 60 * 1000;
-
-function rateLimited(key: string): boolean {
-	const now = Date.now();
-	const record = attempts.get(key);
-
-	if (!record || now > record.resetTime) {
-		attempts.set(key, { count: 1, resetTime: now + WINDOW_MS });
-		return false;
-	}
-
-	record.count += 1;
-	return record.count > MAX_ATTEMPTS;
-}
 
 export async function GET(request: Request) {
 	const session = cookieValue(request, SESSION_COOKIE);
@@ -42,7 +24,8 @@ export async function POST(request: Request) {
 		request.headers.get("x-forwarded-for")?.split(",")[0] ||
 		"unknown";
 
-	if (rateLimited(ip)) {
+	const { allowed } = await checkRateLimit(`rl:admin:${ip}`, 5, 15 * 60);
+	if (!allowed) {
 		Logger.security("ADMIN_LOGIN_RATE_LIMITED", { ip });
 		return json({ error: "Too many attempts" }, 429);
 	}

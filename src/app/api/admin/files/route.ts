@@ -1,18 +1,17 @@
 import { z } from "zod";
 import { isAllowedBlogSlug, isAllowedContentPath } from "@/lib/admin/auth";
 import {
-	HttpError,
+	adminFailure,
 	assertValidDoc,
-	fileHistoryUrl,
-	ghDelete,
-	ghListOrEmpty,
-	ghRead,
-	ghSave,
-	imagesFor,
+	contentCreate,
+	contentDelete,
+	contentImages,
+	contentList,
+	contentRead,
+	contentSave,
 	json,
 	requireAdmin,
 } from "@/lib/admin/server";
-import { Logger } from "@/lib/logger";
 
 const DIRS = { blog: "content/blog", legal: "content/legal" } as const;
 type Kind = keyof typeof DIRS;
@@ -36,13 +35,6 @@ function slugOf(path: string): string {
 	return path.split("/").pop()?.replace(/\.md$/, "") ?? "";
 }
 
-function failure(error: unknown): Response {
-	if (error instanceof HttpError) return json({ error: error.message }, error.status);
-
-	Logger.error(error as Error, { route: "/api/admin/files" });
-	return json({ error: "Request failed" }, 500);
-}
-
 export async function GET(request: Request) {
 	const denied = requireAdmin(request, "GET");
 	if (denied) return denied;
@@ -54,31 +46,28 @@ export async function GET(request: Request) {
 			if (!isAllowedContentPath(path)) return json({ error: "Invalid path" }, 400);
 
 			// Todo lo que el editor necesita para abrir un documento en una sola
-			// vuelta: el texto, el sha para el bloqueo optimista, a dónde apunta el
-			// historial y qué imágenes ya tiene la carpeta del post.
+			// vuelta: el texto, el ETag para el bloqueo optimista y qué imágenes ya
+			// tiene la carpeta del post.
 			const slug = slugOf(path);
-			const { sha, raw } = await ghRead(path);
+			const { sha, raw } = await contentRead(path);
 			return json({
 				path,
 				sha,
 				raw,
-				historyUrl: fileHistoryUrl(path),
-				images: path.startsWith("content/blog/") ? await imagesFor(slug) : [],
+				images: path.startsWith("content/blog/") ? await contentImages(slug) : [],
 			});
 		}
 
 		const lists = await Promise.all(
 			(Object.entries(DIRS) as [Kind, string][]).map(async ([kind, dir]) => {
-				const entries = await ghListOrEmpty(dir);
-				return entries
-					.filter((entry) => entry.name.endsWith(".md"))
-					.map((entry) => ({ kind, path: entry.path }));
+				const entries = await contentList(dir);
+				return entries.map((entry) => ({ kind, path: entry.path }));
 			}),
 		);
 
 		return json({ files: lists.flat() });
 	} catch (error) {
-		return failure(error);
+		return adminFailure(error, "/api/admin/files");
 	}
 }
 
@@ -94,13 +83,12 @@ export async function PUT(request: Request) {
 		if (!isAllowedContentPath(path)) return json({ error: "Invalid path" }, 400);
 		assertValidDoc(raw);
 
-		// El `sha` viejo hace que GitHub conteste 409 si el archivo cambió entre
-		// la lectura y el guardado: se avisa en vez de pisar el cambio ajeno.
-		const saved = await ghSave(path, raw, sha);
-		Logger.security("ADMIN_SAVE", { path });
+		// El ETag viejo hace que R2 rechace el PUT si el objeto cambió desde la
+		// lectura: se avisa en vez de pisar el cambio ajeno.
+		const saved = await contentSave(path, raw, sha);
 		return json({ ok: true, sha: saved.sha });
 	} catch (error) {
-		return failure(error);
+		return adminFailure(error, "/api/admin/files");
 	}
 }
 
@@ -112,14 +100,10 @@ export async function DELETE(request: Request) {
 		const path = new URL(request.url).searchParams.get("path") ?? "";
 		if (!isAllowedContentPath(path)) return json({ error: "Invalid path" }, 400);
 
-		// El sha se lee ahora y no se recibe del cliente: borrar es destructivo y
-		// no puede depender de lo que el navegador crea que tiene.
-		const { sha } = await ghRead(path);
-		await ghDelete(path, sha);
-		Logger.security("ADMIN_DELETE", { path });
+		await contentDelete(path);
 		return json({ ok: true });
 	} catch (error) {
-		return failure(error);
+		return adminFailure(error, "/api/admin/files");
 	}
 }
 
@@ -138,21 +122,9 @@ export async function POST(request: Request) {
 		const path = `${DIRS[kind]}/${slug}.md`;
 		if (!isAllowedContentPath(path)) return json({ error: "Invalid slug" }, 400);
 
-		// GitHub no avisa al crear sobre un archivo existente cuando no se manda
-		// `sha`: lo sobreescribiría. Se chequea antes.
-		const exists = await ghRead(path).then(
-			() => true,
-			(error) => {
-				if (error instanceof HttpError && error.status === 404) return false;
-				throw error;
-			},
-		);
-		if (exists) return json({ error: "A file with that name already exists" }, 409);
-
-		const created = await ghSave(path, raw, undefined);
-		Logger.security("ADMIN_CREATE", { path });
+		const created = await contentCreate(path, raw);
 		return json({ path, sha: created.sha }, 201);
 	} catch (error) {
-		return failure(error);
+		return adminFailure(error, "/api/admin/files");
 	}
 }

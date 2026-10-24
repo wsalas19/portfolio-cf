@@ -27,8 +27,10 @@ export const metadata: Metadata = {
 	},
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function BlogPage() {
-	const posts = getAllPosts();
+	const posts = await getAllPosts();
 
 	return (
 		<div className="min-h-screen py-12 px-4 md:px-8 lg:px-16">

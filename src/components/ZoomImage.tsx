@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import Image from "next/image";
+import { Image } from "@unpic/react";
 import { X } from "lucide-react";
 
 interface ZoomImageProps {
@@ -46,8 +46,7 @@ export function ZoomImage({
 				<Image
 					src={src}
 					alt={alt}
-					width={0}
-					height={0}
+					layout="fullWidth"
 					sizes={sizes}
 					className="h-auto w-full rounded-lg border border-white/10 transition-opacity duration-200 hover:opacity-90"
 				/>

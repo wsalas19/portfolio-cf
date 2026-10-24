@@ -3,6 +3,7 @@ import { z } from "zod";
 import { env } from "@/lib/env";
 import { Logger } from "@/lib/logger";
 import { Resend } from "resend";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // Server-side validation schema with email injection protection
 const emailSchema = z.object({
@@ -28,31 +29,6 @@ const emailSchema = z.object({
   }),
   policyVersion: z.string().min(1).max(32),
 });
-
-// In-memory rate limiting (resets on deployment)
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
-
-function checkRateLimit(identifier: string): { allowed: boolean; resetAt?: number } {
-  const now = Date.now();
-  const record = rateLimitMap.get(identifier);
-  const maxRequests = 5;
-  const windowMs = 3600000; // 1 hour
-
-  if (!record || now > record.resetTime) {
-    rateLimitMap.set(identifier, {
-      count: 1,
-      resetTime: now + windowMs
-    });
-    return { allowed: true };
-  }
-
-  if (record.count >= maxRequests) {
-    return { allowed: false, resetAt: record.resetTime };
-  }
-
-  record.count++;
-  return { allowed: true };
-}
 
 // Una sola lista para los dos handlers. Antes cada uno tenía la suya y habían
 // divergido: OPTIONS leía NEXT_PUBLIC_SITE_URL y POST leía SITE_URL, que no
@@ -106,7 +82,7 @@ export async function POST(request: Request) {
 
   try {
     // Rate limiting check
-    const { allowed, resetAt } = checkRateLimit(ip);
+    const { allowed, resetAt } = await checkRateLimit(`rl:email:${ip}`, 5, 3600);
     if (!allowed) {
       Logger.security('RATE_LIMIT_EXCEEDED', { ip });
       return NextResponse.json(

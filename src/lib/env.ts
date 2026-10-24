@@ -13,15 +13,9 @@ const envSchema = z.object({
   TWTAPI_KEY: z.string().min(1).optional(),
 
   // Panel /admin. Si faltan, el panel falla cerrado: sin contraseña no hay
-  // sesión posible y sin token no se llama a GitHub.
+  // sesión posible. El contenido vive en R2, no en GitHub.
   ADMIN_PASSWORD: z.string().min(1).optional(),
   ADMIN_SECRET: z.string().min(16).optional(),
-  GITHUB_TOKEN: z.string().min(1).optional(),
-  // Repo que edita el panel. En el copy de Cloudflare apunta a portfolio-cf;
-  // en el original cae al repo histórico.
-  GITHUB_REPO: z.string().min(1).optional(),
-  // Solo para probar contra una rama de tiro; en producción se usa master.
-  GITHUB_BRANCH: z.string().min(1).optional(),
 
   // Client-side variables (with defaults for production)
   NEXT_PUBLIC_SITE_URL: z.string().url().default('https://www.wsalas.com'),
@@ -36,9 +30,6 @@ export const env = parsedEnv.success ? parsedEnv.data : {
   TWTAPI_KEY: undefined,
   ADMIN_PASSWORD: undefined,
   ADMIN_SECRET: undefined,
-  GITHUB_TOKEN: undefined,
-  GITHUB_REPO: 'wsalas19/portfolio-cf',
-  GITHUB_BRANCH: undefined,
   NEXT_PUBLIC_SITE_URL: 'https://www.wsalas.com'
 };
 

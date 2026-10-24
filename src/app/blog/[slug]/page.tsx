@@ -1,15 +1,10 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getPostBySlug, getAllPosts } from "@/lib/blog/posts";
+import { getPostBySlug } from "@/lib/blog/posts";
 import { BlogHeader } from "@/components/blog/BlogHeader";
 import { BlogPost as BlogPostContent } from "@/components/blog/BlogPost";
 
-export async function generateStaticParams() {
-	const posts = getAllPosts();
-	return posts.map((post) => ({
-		slug: post.slug,
-	}));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
 	params,
@@ -17,7 +12,7 @@ export async function generateMetadata({
 	params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
 	const { slug } = await params;
-	const post = getPostBySlug(slug);
+	const post = await getPostBySlug(slug);
 
 	if (!post) {
 		return {
@@ -54,7 +49,7 @@ export default async function BlogPostPage({
 	params: Promise<{ slug: string }>;
 }) {
 	const { slug } = await params;
-	const post = getPostBySlug(slug);
+	const post = await getPostBySlug(slug);
 
 	if (!post) {
 		notFound();

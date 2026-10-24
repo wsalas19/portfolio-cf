@@ -17,9 +17,9 @@ interface StatsProps {
  * agrega, el número cambia solo. Cada uno enlaza a su fuente, que es lo que hace
  * la afirmación verificable de un clic en vez de una cifra que hay que creer.
  */
-function Stats({ copy, profile, projects }: StatsProps) {
+async function Stats({ copy, profile, projects }: StatsProps) {
 	const years = new Date().getFullYear() - profile.experienceStart;
-	const postCount = getAllPosts().length;
+	const postCount = (await getAllPosts()).length;
 
 	// Con menos de tres artículos la ranura se lee pobre. El estudio de
 	// Barranquilla tiene su propia cifra dura, ya publicada y enlazable.

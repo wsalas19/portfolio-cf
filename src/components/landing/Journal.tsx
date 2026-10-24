@@ -9,8 +9,8 @@ import type { LandingCopy } from "@/lib/i18n";
  * Los dos últimos posts. Si no hay ninguno, la sección no existe: una sección
  * vacía con un "coming soon" es peor que su ausencia.
  */
-function Journal({ copy }: { copy: LandingCopy }) {
-	const posts = getAllPosts().slice(0, 2);
+async function Journal({ copy }: { copy: LandingCopy }) {
+	const posts = (await getAllPosts()).slice(0, 2);
 	if (posts.length === 0) return null;
 
 	return (

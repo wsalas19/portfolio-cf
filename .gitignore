@@ -56,3 +56,5 @@ CLAUDE.md
 # Typegen de vinext (compatibilidad con next/*)
 /.next/
 next-env.d.ts
+# Tipos generados por wrangler
+worker-configuration.d.ts

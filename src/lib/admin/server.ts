@@ -1,23 +1,18 @@
-// Puente entre las rutas de /api/admin y GitHub. Es el ÚNICO módulo que toca el
-// PAT: el navegador nunca lo ve, todas las llamadas salen del servidor.
+// Puente entre las rutas de /api/admin y R2. El navegador nunca ve el binding:
+// todas las lecturas y escrituras salen del servidor.
 //
-// Se lee y se escribe por la API de GitHub y no por `fs` porque en Vercel el
-// filesystem es la foto del último build (queda obsoleto apenas se guarda algo)
-// y además es de solo lectura. El `sha` que devuelve la lectura es lo que da
-// bloqueo optimista: guardar sobre una versión que cambió da 409 en vez de pisar.
+// El `sha` que devuelve la lectura es el ETag del objeto en R2. Guardar con un
+// ETag viejo usa `onlyIf.etagMatches` y devuelve 409 en vez de pisar un cambio
+// ajeno; el mismo bloqueo optimista que antes daba GitHub.
 import "server-only";
 
 import matter from "gray-matter";
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { SESSION_COOKIE, verifySession } from "@/lib/admin/auth";
 import { env } from "@/lib/env";
 import { Logger } from "@/lib/logger";
-
-const REPO = env.GITHUB_REPO || "wsalas19/portfolio-cf";
-// La rama es configurable solo para probar contra una rama de tiro sin ensuciar
-// master; en producción es master.
-const BRANCH = env.GITHUB_BRANCH || "master";
-const GITHUB_API = "https://api.github.com";
+import { cleanEtag, contentBucket } from "@/lib/content/r2";
 
 export class HttpError extends Error {
 	constructor(
@@ -26,6 +21,26 @@ export class HttpError extends Error {
 	) {
 		super(message);
 	}
+}
+
+function storage() {
+	const bucket = contentBucket();
+	if (!bucket) throw new HttpError(503, "Content storage is not configured");
+	return bucket;
+}
+
+async function listAll(prefix: string) {
+	const bucket = storage();
+	const keys: string[] = [];
+	let cursor: string | undefined;
+
+	do {
+		const page = await bucket.list({ prefix, cursor });
+		keys.push(...page.objects.map((object) => object.key));
+		cursor = page.truncated ? page.cursor : undefined;
+	} while (cursor);
+
+	return keys;
 }
 
 export function json(body: unknown, status = 200): NextResponse {
@@ -37,17 +52,10 @@ export function json(body: unknown, status = 200): NextResponse {
 }
 
 /**
- * El `Origin` tiene que ser el del propio sitio. Se compara contra el host de la
- * petición y no contra `NEXT_PUBLIC_SITE_URL`, que es lo que había antes: esa
- * variable apuntaba al apex mientras el sitio canonicaliza en www, así que
- * *todo* guardado daba 403 en producción y funcionaba en local — el peor
- * reparto posible para un fallo, porque solo se ve desplegado. Además las
- * `NEXT_PUBLIC_*` se inlinean en el build: corregir la variable en Vercel no
- * arregla el deploy que ya está corriendo.
- *
- * Comparar contra el host de la petición es la defensa estándar contra CSRF y
- * cubre apex, www, deploys de preview y localhost con un solo chequeo, sin
- * ninguna variable que mantener sincronizada.
+ * El `Origin` tiene que ser el del propio sitio. Se compara contra el host de
+ * la petición y no contra `NEXT_PUBLIC_SITE_URL`: esa variable apuntaba al apex
+ * mientras el sitio canonicaliza en www, así que *todo* guardado daba 403 en
+ * producción y funcionaba en local — el peor reparto posible para un fallo.
  */
 export function isAllowedOrigin(request: Request): boolean {
 	const origin = request.headers.get("origin");
@@ -74,10 +82,7 @@ export function cookieValue(request: Request, name: string): string | undefined 
 
 /**
  * Guarda de las rutas de admin. Devuelve la respuesta de error, o `null` si la
- * petición puede seguir.
- *
- * En los métodos que mutan se valida también el `Origin`: `SameSite=Lax` ya
- * bloquea el envío de la cookie desde otro sitio, esto es la segunda capa.
+ * petición puede seguir. En los métodos que mutan se valida también el `Origin`.
  */
 export function requireAdmin(request: Request, method: string): NextResponse | null {
 	if (method !== "GET" && method !== "HEAD" && !isAllowedOrigin(request)) {
@@ -92,144 +97,94 @@ export function requireAdmin(request: Request, method: string): NextResponse | n
 	return null;
 }
 
-function encodePath(path: string): string {
-	return path.split("/").map(encodeURIComponent).join("/");
+export async function contentList(dir: string): Promise<{ name: string; path: string }[]> {
+	const keys = await listAll(`${dir}/`);
+	return keys
+		.filter((key) => key.endsWith(".md"))
+		.map((key) => ({ name: key.slice(dir.length + 1), path: key }))
+		.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-async function gh(path: string, init: RequestInit = {}): Promise<Response> {
-	if (!env.GITHUB_TOKEN) {
-		throw new HttpError(500, "Server configuration error");
-	}
+export async function contentRead(path: string): Promise<{ sha: string; raw: string }> {
+	const bucket = storage();
+	const object = await bucket.get(path);
+	if (!object) throw new HttpError(404, "Not found");
 
-	return fetch(`${GITHUB_API}${path}`, {
-		...init,
-		headers: {
-			Accept: "application/vnd.github+json",
-			Authorization: `Bearer ${env.GITHUB_TOKEN}`,
-			// Sin User-Agent GitHub responde 403, que es el fallo que hace
-			// parecer que el panel "no anda" sin decir por qué.
-			"User-Agent": "wsalas-portfolio-admin",
-			"X-GitHub-Api-Version": "2022-11-28",
-			...(init.headers ?? {}),
-		},
-		cache: "no-store",
-	});
-}
-
-async function ghJson(path: string, init?: RequestInit): Promise<unknown> {
-	const response = await gh(path, init);
-	if (response.ok) return response.json();
-
-	// 404 y 409 se propagan con su código: son los dos casos que el editor sí
-	// puede resolver ("no existe" y "alguien más guardó").
-	if (response.status === 404 || response.status === 409) {
-		throw new HttpError(response.status, response.status === 404 ? "Not found" : "Conflict");
-	}
-
-	Logger.error(new Error("GitHub API error"), { path, status: response.status });
-	throw new HttpError(502, "GitHub error");
-}
-
-export async function ghList(dir: string): Promise<{ name: string; path: string }[]> {
-	const data = await ghJson(`/repos/${REPO}/contents/${encodePath(dir)}?ref=${BRANCH}`);
-	if (!Array.isArray(data)) throw new HttpError(502, "Unexpected GitHub response");
-
-	return data
-		.filter((entry): entry is { name: string; path: string } =>
-			typeof entry?.name === "string" && typeof entry?.path === "string",
-		)
-		.map(({ name, path }) => ({ name, path }));
-}
-
-/**
- * Una carpeta que todavía no existe en el repo da lista vacía, no error. Solo se
- * traga el 404: un `catch` a secas sobre esto escondía también los fallos de
- * autenticación, y el panel mostraba una lista vacía como si no hubiera
- * contenido en vez de decir que el token estaba mal.
- */
-export async function ghListOrEmpty(dir: string): Promise<{ name: string; path: string }[]> {
-	try {
-		return await ghList(dir);
-	} catch (error) {
-		if (error instanceof HttpError && error.status === 404) return [];
-		throw error;
-	}
-}
-
-export async function ghRead(path: string): Promise<{ sha: string; raw: string }> {
-	const data = (await ghJson(`/repos/${REPO}/contents/${encodePath(path)}?ref=${BRANCH}`)) as {
-		sha?: string;
-		content?: string;
+	return {
+		sha: cleanEtag(object.etag ?? object.httpEtag),
+		raw: await object.text(),
 	};
+}
 
-	if (typeof data?.sha !== "string" || typeof data?.content !== "string") {
-		throw new HttpError(502, "Unexpected GitHub response");
+function revalidateContent(): void {
+	revalidateTag("content", "max");
+}
+
+export async function contentSave(
+	path: string,
+	raw: string,
+	sha: string,
+): Promise<{ sha: string }> {
+	const bucket = storage();
+	const object = await bucket.put(path, raw, {
+		onlyIf: { etagMatches: sha },
+		httpMetadata: { contentType: "text/markdown; charset=utf-8" },
+	});
+
+	if (!object) throw new HttpError(409, "Conflict");
+	revalidateContent();
+	return { sha: cleanEtag(object.etag ?? object.httpEtag) };
+}
+
+export async function contentCreate(path: string, raw: string): Promise<{ sha: string }> {
+	const bucket = storage();
+	if (await bucket.head(path)) {
+		throw new HttpError(409, "A file with that name already exists");
 	}
 
-	return { sha: data.sha, raw: Buffer.from(data.content, "base64").toString("utf8") };
-}
-
-async function ghPut(
-	path: string,
-	base64: string,
-	message: string,
-	sha?: string,
-): Promise<{ sha: string }> {
-	const data = (await ghJson(`/repos/${REPO}/contents/${encodePath(path)}`, {
-		method: "PUT",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({ message, content: base64, branch: BRANCH, ...(sha ? { sha } : {}) }),
-	})) as { content?: { sha?: string } };
-
-	if (typeof data?.content?.sha !== "string") throw new HttpError(502, "Unexpected GitHub response");
-	return { sha: data.content.sha };
-}
-
-export function ghSave(path: string, raw: string, sha: string | undefined): Promise<{ sha: string }> {
-	return ghPut(path, Buffer.from(raw, "utf8").toString("base64"), `admin: update ${path}`, sha);
-}
-
-export function ghUpload(path: string, bytes: Buffer): Promise<{ sha: string }> {
-	return ghPut(path, bytes.toString("base64"), `admin: upload ${path}`);
-}
-
-// El DELETE de la API de contenidos exige el `sha` de la versión que se borra:
-// el handler lo lee justo antes. Es la misma garantía que el PUT — no se borra
-// algo que cambió desde que se leyó.
-export async function ghDelete(path: string, sha: string): Promise<void> {
-	await ghJson(`/repos/${REPO}/contents/${encodePath(path)}`, {
-		method: "DELETE",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({ message: `admin: delete ${path}`, sha, branch: BRANCH }),
+	const object = await bucket.put(path, raw, {
+		httpMetadata: { contentType: "text/markdown; charset=utf-8" },
 	});
+	if (!object) throw new HttpError(500, "Could not create the file");
+
+	revalidateContent();
+	return { sha: cleanEtag(object.etag ?? object.httpEtag) };
+}
+
+export async function contentDelete(path: string): Promise<void> {
+	const bucket = storage();
+	if (!(await bucket.head(path))) throw new HttpError(404, "Not found");
+	await bucket.delete(path);
+	revalidateContent();
 }
 
 /**
- * El historial no se inventa: git ya lo tiene. En vez de una tabla de revisiones
- * propia, el panel enlaza a los commits del archivo en GitHub.
- */
-export function fileHistoryUrl(path: string): string {
-	return `https://github.com/${REPO}/commits/${BRANCH}/${encodePath(path)}`;
-}
-
-/**
- * Imágenes de un post, leídas de su carpeta. Misma convención que
+ * Imágenes de un post, leídas de su carpeta en R2. Misma convención que
  * `galleryFor` de `src/lib/project-images.ts`.
  */
-export async function imagesFor(slug: string): Promise<string[]> {
-	const entries = await ghListOrEmpty(`public/images/blog/${slug}`);
+export async function contentImages(slug: string): Promise<string[]> {
+	const prefix = `images/blog/${slug}/`;
+	const keys = await listAll(prefix);
 
-	return entries
-		.filter((entry) => /\.(png|jpe?g|webp|avif)$/i.test(entry.name))
-		.sort((a, b) => a.name.localeCompare(b.name))
-		.map((entry) => `/images/blog/${slug}/${entry.name}`);
+	return keys
+		.filter((key) => /\.(png|jpe?g|webp|avif)$/i.test(key))
+		.sort((a, b) => a.localeCompare(b))
+		.map((key) => `/${key}`);
+}
+
+export async function contentUpload(
+	path: string,
+	bytes: ArrayBuffer,
+	contentType: string,
+): Promise<void> {
+	const bucket = storage();
+	await bucket.put(path, bytes, { httpMetadata: { contentType } });
 }
 
 /**
- * Un frontmatter que no parsea o sin `title` rompe el build del blog entero, no
- * solo esa página. Se valida con gray-matter (que ya es dependencia y ya usa
- * `posts.ts`) antes de commitear, para que el error se vea en el editor y no en
- * el deploy.
+ * Un frontmatter que no parsea o sin `title` rompe el blog entero, no solo esa
+ * página. Se valida con gray-matter antes de escribir, para que el error se vea
+ * en el editor y no en el runtime.
  */
 export function assertValidDoc(raw: string): void {
 	let data: Record<string, unknown>;
@@ -242,4 +197,12 @@ export function assertValidDoc(raw: string): void {
 	if (typeof data.title !== "string" || !data.title.trim()) {
 		throw new HttpError(400, "The frontmatter needs a non-empty `title`");
 	}
+}
+
+/** Los errores de R2 se traducen a una respuesta sin filtrar detalles internos. */
+export function adminFailure(error: unknown, route: string): Response {
+	if (error instanceof HttpError) return json({ error: error.message }, error.status);
+
+	Logger.error(error as Error, { route });
+	return json({ error: "Request failed" }, 500);
 }
