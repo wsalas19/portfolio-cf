@@ -5,9 +5,7 @@ import NavBar from "@/components/NavBar";
 import Footer from "@/components/Footer";
 import ScrollButton from "@/components/ScrollButton";
 import { Toaster } from "@/components/ui/toaster";
-import { Analytics } from "@vercel/analytics/next";
 import { Carme, Inter } from "next/font/google";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import { env } from "@/lib/env";
 import { PROFILE, SOCIAL_LINKS } from "@/lib/constants";
 import { getLandingContent } from "@/lib/i18n";
@@ -157,13 +155,11 @@ export default function RootLayout({
 				/>
 			</head>
 			<body className="font-sans">
-				<SpeedInsights />
 				<NavBar />
 				{children}
 				<Footer />
 				<Toaster />
 				<ScrollButton />
-				<Analytics />
 			</body>
 		</html>
 	);

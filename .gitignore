@@ -34,9 +34,11 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# local env files
+# Local env files
 .env*.local
 .env
+.dev.vars
+.dev.vars.*
 
 # vercel
 .vercel
@@ -52,3 +54,8 @@ next-env.d.ts
 .claude/
 .claude/*
 CLAUDE.md
+/dist/
+.vinext/
+.wrangler/
+# Manifiesto generado en build por scripts/generate-content.mjs
+/src/lib/generated/

@@ -85,8 +85,12 @@ export async function OPTIONS(request: Request) {
 }
 
 export async function POST(request: Request) {
-  // Get client IP from Vercel headers
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
+  // Cloudflare expone la IP real en CF-Connecting-IP; Vercel/otros proxies en
+  // x-forwarded-for. El fallback mantiene el rate limit funcionando en local.
+  const ip =
+    request.headers.get('cf-connecting-ip') ||
+    request.headers.get('x-forwarded-for')?.split(',')[0] ||
+    'unknown';
 
   // Check origin for CORS
   const origin = request.headers.get('origin');

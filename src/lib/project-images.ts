@@ -1,23 +1,12 @@
-import "server-only"; // usa fs: se lee en el servidor, no se bundlea al cliente.
+import "server-only"; // el manifiesto se genera en build, no se bundlea al cliente.
 
-import fs from "fs";
-import path from "path";
+import generated from "@/lib/generated/content.json";
 
-// Un directorio por proyecto, igual que las imágenes del blog
-// (`content/blog/<slug>.md` ↔ `public/images/blog/<slug>/`). Agregar una captura
-// es copiar el archivo a `public/images/projects/<slug>/` y nada más: no hay
-// lista que mantener ni import que se olvide.
-const projectsDir = path.join(process.cwd(), "public", "images", "projects");
+// Un directorio por proyecto. El manifiesto se genera en build escaneando
+// `public/images/projects/<slug>/`, así que agregar una captura sigue siendo
+// copiar el archivo y reconstruir.
+const galleries = generated.galleries as Record<string, string[]>;
 
 export function galleryFor(slug: string): string[] {
-	const dir = path.join(projectsDir, slug);
-	if (!fs.existsSync(dir)) {
-		return [];
-	}
-
-	return fs
-		.readdirSync(dir)
-		.filter((file) => /\.(png|jpe?g|webp|avif)$/i.test(file))
-		.sort()
-		.map((file) => `/images/projects/${slug}/${file}`);
+	return galleries[slug] ?? [];
 }

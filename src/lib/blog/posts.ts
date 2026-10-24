@@ -1,89 +1,35 @@
-import "server-only"; // usa fs: el contenido se lee en el servidor, no se bundlea.
+import "server-only"; // el contenido se resuelve en el build, no en el cliente.
 
-import fs from "fs";
-import path from "path";
-import matter from "gray-matter";
-import { Logger } from "@/lib/logger";
-import { BlogPost, BlogPostFrontmatter } from "./types";
+import generated from "@/lib/generated/content.json";
+import type { BlogPost } from "./types";
 
-const contentDirectory = path.join(process.cwd(), "content", "blog");
-
-// Ensure content directory exists
-if (!fs.existsSync(contentDirectory)) {
-  fs.mkdirSync(contentDirectory, { recursive: true });
-}
+// `scripts/generate-content.mjs` deja el manifiesto listo antes de dev/build.
+// Así el runtime no toca `fs` y el mismo contenido funciona en Workers.
+const posts = generated.posts as BlogPost[];
 
 export function getAllPostSlugs(): string[] {
-  if (!fs.existsSync(contentDirectory)) {
-    return [];
-  }
-
-  const fileNames = fs.readdirSync(contentDirectory);
-  return fileNames
-    .filter((name) => name.endsWith(".md") || name.endsWith(".mdx"))
-    .map((name) => name.replace(/\.(md|mdx)$/, ""));
+	return posts.map((post) => post.slug);
 }
 
 export function getPostBySlug(slug: string): BlogPost | null {
-  try {
-    const fullPath = path.join(contentDirectory, `${slug}.md`);
-    if (!fs.existsSync(fullPath)) {
-      return null;
-    }
-
-    const fileContents = fs.readFileSync(fullPath, "utf8");
-    const { data, content } = matter(fileContents);
-
-    const frontmatter = data as BlogPostFrontmatter;
-
-    // Calculate reading time (average 200 words per minute)
-    const words = content.trim().split(/\s+/).length;
-    const readingTime = Math.max(1, Math.ceil(words / 200));
-
-    return {
-      slug,
-      title: frontmatter.title,
-      // Normalizado a "YYYY-MM-DD" acá y no en cada consumidor: gray-matter
-      // devuelve Date para `date: 2026-10-06` y string para `date: "2026-10-06"`,
-      // y comparar un Date.toString() contra un ISO dejaba al post nuevo de
-      // último. Como fecha de calendario, además, el string ordena igual que
-      // cronológicamente.
-      date: new Date(frontmatter.date).toISOString().slice(0, 10),
-      excerpt: frontmatter.excerpt,
-      content,
-      tags: frontmatter.tags || [],
-      author: frontmatter.author || "William Salas",
-      readingTime,
-    };
-  } catch (error) {
-    Logger.error(error instanceof Error ? error : new Error(String(error)), { slug });
-    return null;
-  }
+	return posts.find((post) => post.slug === slug) ?? null;
 }
 
 export function getAllPosts(): BlogPost[] {
-  const slugs = getAllPostSlugs();
-  const posts = slugs
-    .map((slug) => getPostBySlug(slug))
-    .filter((post): post is BlogPost => post !== null)
-    // Descendente: lo más reciente primero, sobre fechas ya normalizadas.
-    .sort((a, b) => b.date.localeCompare(a.date));
-
-  return posts;
+	// El manifiesto ya viene ordenado de más reciente a más antiguo.
+	return posts;
 }
 
 export function getPostsByTag(tag: string): BlogPost[] {
-  const allPosts = getAllPosts();
-  return allPosts.filter((post) =>
-    post.tags.some((postTag) => postTag.toLowerCase() === tag.toLowerCase())
-  );
+	return posts.filter((post) =>
+		post.tags.some((postTag) => postTag.toLowerCase() === tag.toLowerCase()),
+	);
 }
 
 export function getAllTags(): string[] {
-  const allPosts = getAllPosts();
-  const tags = new Set<string>();
-  allPosts.forEach((post) => {
-    post.tags.forEach((tag) => tags.add(tag));
-  });
-  return Array.from(tags).sort();
+	const tags = new Set<string>();
+	for (const post of posts) {
+		for (const tag of post.tags) tags.add(tag);
+	}
+	return Array.from(tags).sort();
 }

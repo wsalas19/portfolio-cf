@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "portfolio-cf",
+  "compatibility_date": "2026-10-24",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "vars": {
+    "NEXT_PUBLIC_SITE_URL": "https://portfolio-cf.wsalas.workers.dev"
+  },
+  "main": "vinext/server/fetch-handler",
+  "assets": {
+    "directory": "dist/client",
+    "html_handling": "none",
+    "not_found_handling": "none",
+    "binding": "ASSETS",
+    "run_worker_first": [
+      "/*",
+      "!/_next/static/*",
+      "!/*/_next/static/*"
+    ]
+  }
+}

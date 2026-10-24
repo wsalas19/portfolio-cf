@@ -1,6 +1,8 @@
 allowBuilds:
+  esbuild: true
   sharp: true
   unrs-resolver: true
+  workerd: true
 
 # next pins postcss to an exact vulnerable version and sharp is an
 # optional dep that resolves low, so neither is fixed by bumping next.

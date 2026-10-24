@@ -17,6 +17,9 @@ const envSchema = z.object({
   ADMIN_PASSWORD: z.string().min(1).optional(),
   ADMIN_SECRET: z.string().min(16).optional(),
   GITHUB_TOKEN: z.string().min(1).optional(),
+  // Repo que edita el panel. En el copy de Cloudflare apunta a portfolio-cf;
+  // en el original cae al repo histórico.
+  GITHUB_REPO: z.string().min(1).optional(),
   // Solo para probar contra una rama de tiro; en producción se usa master.
   GITHUB_BRANCH: z.string().min(1).optional(),
 
@@ -34,6 +37,7 @@ export const env = parsedEnv.success ? parsedEnv.data : {
   ADMIN_PASSWORD: undefined,
   ADMIN_SECRET: undefined,
   GITHUB_TOKEN: undefined,
+  GITHUB_REPO: 'wsalas19/portfolio-cf',
   GITHUB_BRANCH: undefined,
   NEXT_PUBLIC_SITE_URL: 'https://www.wsalas.com'
 };

@@ -1,17 +1,19 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest): NextResponse {
+export function proxy(request: NextRequest): NextResponse {
 	const response = NextResponse.next();
 
-	// País del visitante para elegir la moneda del precio. Vercel pone
-	// `x-vercel-ip-country` en el edge; en local no existe y el componente
-	// cliente cae a la zona horaria.
+	// País del visitante para elegir la moneda del precio. Cloudflare pone
+	// `CF-IPCountry` en el edge; Vercel usaba `x-vercel-ip-country`. Se dejan
+	// ambos para que el mismo código funcione en local y en el deploy.
 	//
 	// Se escribe solo si la cookie falta, a propósito: mandar `Set-Cookie` en
 	// cada respuesta le quita al HTML estático la posibilidad de servirse desde
 	// caché compartida. A partir de la segunda visita no se toca nada.
 	if (!request.cookies.has('geo')) {
-		const country = request.headers.get('x-vercel-ip-country');
+		const country =
+			request.headers.get('cf-ipcountry') ??
+			request.headers.get('x-vercel-ip-country');
 		if (country) {
 			response.cookies.set('geo', country.toUpperCase(), {
 				path: '/',

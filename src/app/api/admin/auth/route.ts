@@ -37,7 +37,10 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-	const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown";
+	const ip =
+		request.headers.get("cf-connecting-ip") ||
+		request.headers.get("x-forwarded-for")?.split(",")[0] ||
+		"unknown";
 
 	if (rateLimited(ip)) {
 		Logger.security("ADMIN_LOGIN_RATE_LIMITED", { ip });

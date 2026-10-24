@@ -13,7 +13,7 @@ import { SESSION_COOKIE, verifySession } from "@/lib/admin/auth";
 import { env } from "@/lib/env";
 import { Logger } from "@/lib/logger";
 
-const REPO = "wsalas19/portfolio";
+const REPO = env.GITHUB_REPO || "wsalas19/portfolio-cf";
 // La rama es configurable solo para probar contra una rama de tiro sin ensuciar
 // master; en producción es master.
 const BRANCH = env.GITHUB_BRANCH || "master";

@@ -1,13 +1,9 @@
-// Carga de los documentos legales en Markdown (content/legal/*.md). Server-only:
-// usa fs. Los datos que necesita el cliente viven en "@/lib/legal".
+// Carga de los documentos legales desde el manifiesto generado en build.
+// Server-only: el contenido no se bundlea al cliente.
 
-import "server-only"; // usa fs: el contenido se lee en el servidor, no se bundlea.
+import "server-only";
 
-import fs from "fs";
-import path from "path";
-import matter from "gray-matter";
-
-const contentDirectory = path.join(process.cwd(), "content", "legal");
+import generated from "@/lib/generated/content.json";
 
 export type LegalSlug = "privacidad" | "terminos";
 
@@ -18,16 +14,12 @@ export type LegalDoc = {
 	content: string;
 };
 
+const legal = generated.legal as Record<
+	string,
+	{ title: string; excerpt: string; content: string }
+>;
+
 export function getLegalDoc(slug: LegalSlug): LegalDoc | null {
-	const fullPath = path.join(contentDirectory, `${slug}.md`);
-	if (!fs.existsSync(fullPath)) return null;
-
-	const { data, content } = matter(fs.readFileSync(fullPath, "utf8"));
-
-	return {
-		slug,
-		title: data.title,
-		excerpt: data.excerpt,
-		content,
-	};
+	const doc = legal[slug];
+	return doc ? { slug, ...doc } : null;
 }
