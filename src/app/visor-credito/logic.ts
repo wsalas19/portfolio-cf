@@ -3,11 +3,21 @@
 
 import {
 	BaseParams,
+	DestinoAbono,
 	FilaPesos,
 	FilaUVR,
 	Simulacion,
+	TipoAporte,
 	UVRParams,
 } from "@/lib/credito";
+
+function destino(v: Record<string, string>, id: string): DestinoAbono {
+	return v[id] === "cuota" ? "cuota" : "plazo";
+}
+
+function frecuencia(v: Record<string, string>, id: string): TipoAporte {
+	return v[id] === "mensual" ? "mensual" : "unico";
+}
 
 export function uvrParamsFrom(v: Record<string, string>): UVRParams {
 	const num = (id: string) => parseFloat(v[id]);
@@ -21,6 +31,9 @@ export function uvrParamsFrom(v: Record<string, string>): UVRParams {
 		seguroVidaPct: num("seguroVidaPct") || 0,
 		seguroHogarPct: num("seguroHogarPct") || 0,
 		aporteExtra: num("aporteExtra") || 0,
+		destinoAbono: destino(v, "destinoAbono"),
+		tipoAporte: frecuencia(v, "tipoAporte"),
+		mesAbono: parseInt(v.mesAbono) || 1,
 		valorUVR: num("valorUVR"),
 		inflacionEA: num("inflacion"),
 	};
@@ -38,6 +51,9 @@ export function pesosParamsFrom(v: Record<string, string>): BaseParams {
 		seguroVidaPct: num("pSeguroVidaPct") || 0,
 		seguroHogarPct: num("pSeguroHogarPct") || 0,
 		aporteExtra: num("pAporteExtra") || 0,
+		destinoAbono: destino(v, "pDestinoAbono"),
+		tipoAporte: frecuencia(v, "pTipoAporte"),
+		mesAbono: parseInt(v.pMesAbono) || 1,
 	};
 }
 
@@ -56,7 +72,7 @@ function descargarCSV(nombre: string, encabezado: string, filas: unknown[][]) {
 
 export function descargarUVR(r: Simulacion<FilaUVR>) {
 	descargarCSV(
-		"amortizacion_hipotecaria.csv",
+		`amortizacion_hipotecaria_${r.resumen.destinoAbono === "cuota" ? "reducir_cuota" : "reducir_plazo"}.csv`,
 		"Mes;Valor UVR;Cuota UVR;Interes UVR;Abono Capital UVR;Saldo Capital UVR;Aporte Extra COP;Seguros COP;Cuota Total COP;Saldo Capital COP",
 		r.filas.map((f) => [
 			f.mes,
@@ -75,7 +91,7 @@ export function descargarUVR(r: Simulacion<FilaUVR>) {
 
 export function descargarPesos(r: Simulacion<FilaPesos>) {
 	descargarCSV(
-		"amortizacion_pesos.csv",
+		`amortizacion_pesos_${r.resumen.destinoAbono === "cuota" ? "reducir_cuota" : "reducir_plazo"}.csv`,
 		"Mes;Cuota COP;Interes COP;Abono Capital COP;Saldo Capital COP;Aporte Extra COP;Seguros COP;Cuota Total COP",
 		r.filas.map((f) => [
 			f.mes,

@@ -11,7 +11,7 @@ const mono = JetBrains_Mono({
 const SITE_URL = env.NEXT_PUBLIC_SITE_URL;
 const TITLE = "Simulador de Crédito Hipotecario Colombia — Cuota UVR y Pesos";
 const DESCRIPTION =
-	"Calcula gratis tu crédito hipotecario en Colombia: cuota mensual, intereses, seguros y abonos a capital. Simula la línea UVR y la línea pesos con tasas de referencia FNA, FRECH y Ley 546/1999.";
+	"Calcula gratis tu crédito hipotecario en Colombia: cuota mensual, intereses, seguros y abonos a capital. Simula la línea UVR y la línea pesos con tasas de referencia FNA, FRECH y Ley 546/1999, y elige si tu abono reduce el plazo o la cuota.";
 
 export const metadata: Metadata = {
 	title: TITLE,
@@ -28,6 +28,8 @@ export const metadata: Metadata = {
 		"FRECH",
 		"Ley 546 de 1999",
 		"abono a capital crédito hipotecario",
+		"reducir cuota crédito hipotecario",
+		"reducir plazo crédito hipotecario",
 	],
 	alternates: { canonical: "/visor-credito" },
 	robots: { index: true, follow: true },

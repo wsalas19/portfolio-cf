@@ -4,11 +4,15 @@ import { useState } from "react";
 import Link from "next/link";
 import { Banknote, Calculator, FileDown, Landmark } from "lucide-react";
 import {
+	DestinoAbono,
 	FilaPesos,
 	FilaUVR,
+	Resumen,
+	SistemaAmortizacion,
 	Simulacion,
-	simularPesos,
-	simularUVR,
+	TipoAporte,
+	compararPesos,
+	compararUVR,
 } from "@/lib/credito";
 import AmortChart from "./AmortChart";
 import {
@@ -22,7 +26,23 @@ import {
 } from "./data";
 import { descargarPesos, descargarUVR, pesosParamsFrom, uvrParamsFrom } from "./logic";
 import { Button } from "@/components/ui/button";
-import { COLS_PESOS, COLS_UVR, FormFields, Resultados, Stat } from "./ui";
+import {
+	COLS_PESOS,
+	COLS_UVR,
+	ComparativaAbonos,
+	FormFields,
+	Resultados,
+	Stat,
+} from "./ui";
+
+type Comp = {
+	resumenes: { sinAbono: Resumen; plazo: Resumen; cuota: Resumen };
+	aporte: number;
+	destino: DestinoAbono;
+	tipo: TipoAporte;
+	mesAbono: number;
+	sistema: SistemaAmortizacion;
+};
 
 export default function CreditoSimulator() {
 	const [tab, setTab] = useState<"UVR" | "Pesos">("UVR");
@@ -30,26 +50,60 @@ export default function CreditoSimulator() {
 	const [pesosValues, setPesosValues] = useState(PESOS_DEFAULTS);
 	const [uvrResult, setUvrResult] = useState<Simulacion<FilaUVR> | null>(null);
 	const [pesosResult, setPesosResult] = useState<Simulacion<FilaPesos> | null>(null);
+	const [uvrComp, setUvrComp] = useState<Comp | null>(null);
+	const [pesosComp, setPesosComp] = useState<Comp | null>(null);
 	const [error, setError] = useState<string | null>(null);
 
 	const calcular = () => {
 		setError(null);
 		try {
-			if (tab === "UVR") setUvrResult(simularUVR(uvrParamsFrom(uvrValues)));
-			else setPesosResult(simularPesos(pesosParamsFrom(pesosValues)));
+			if (tab === "UVR") {
+				const params = uvrParamsFrom(uvrValues);
+				const c = compararUVR(params);
+				setUvrResult(params.destinoAbono === "cuota" ? c.cuota : c.plazo);
+				setUvrComp({
+					resumenes: {
+						sinAbono: c.sinAbono.resumen,
+						plazo: c.plazo.resumen,
+						cuota: c.cuota.resumen,
+					},
+					aporte: params.aporteExtra,
+					destino: params.destinoAbono ?? "plazo",
+					tipo: params.tipoAporte ?? "unico",
+					mesAbono: params.mesAbono ?? 1,
+					sistema: params.sistema,
+				});
+			} else {
+				const params = pesosParamsFrom(pesosValues);
+				const c = compararPesos(params);
+				setPesosResult(params.destinoAbono === "cuota" ? c.cuota : c.plazo);
+				setPesosComp({
+					resumenes: {
+						sinAbono: c.sinAbono.resumen,
+						plazo: c.plazo.resumen,
+						cuota: c.cuota.resumen,
+					},
+					aporte: params.aporteExtra,
+					destino: params.destinoAbono ?? "plazo",
+					tipo: params.tipoAporte ?? "unico",
+					mesAbono: params.mesAbono ?? 1,
+					sistema: params.sistema,
+				});
+			}
 		} catch (e) {
 			setError(e instanceof Error ? e.message : "Error inesperado");
 		}
 	};
 
 	const r = tab === "UVR" ? uvrResult : pesosResult;
+	const comp = tab === "UVR" ? uvrComp : pesosComp;
 	const fin = r
 		? `Mes ${r.resumen.finCreditoMes} (${Math.floor(r.resumen.finCreditoMes / 12)}a ${r.resumen.finCreditoMes % 12}m)`
 		: "";
 
 	return (
-		<div className="flex min-h-screen flex-col px-4 pb-24 pt-4 text-white md:px-6 lg:h-screen lg:overflow-hidden">
-			<div className="flex min-h-0 flex-1 flex-col gap-4">
+		<div className="flex min-h-screen flex-col px-4 text-white md:px-6">
+			<div className="flex flex-1 flex-col gap-4 pt-4 lg:h-screen lg:min-h-0 lg:flex-none lg:pb-24">
 				<header className="shrink-0">
 					<h1 className="text-3xl font-semibold tracking-[-0.02em]">
 						Visor de Crédito Hipotecario Colombia
@@ -119,7 +173,7 @@ export default function CreditoSimulator() {
 									className="flex items-center justify-center gap-2 rounded-md border border-white/15 px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:border-white/40"
 								>
 									<FileDown size={16} />
-									Save CSV
+									Descargar CSV
 								</button>
 							)}
 						</div>
@@ -131,7 +185,7 @@ export default function CreditoSimulator() {
 						)}
 					</aside>
 
-					<section className="flex min-h-0 flex-col gap-4">
+					<section className="flex min-h-0 flex-col gap-4 lg:overflow-y-auto">
 						{!r ? (
 							<div className="flex min-h-[200px] md:min-h-0 flex-1 items-center justify-center rounded-lg border border-dashed border-white/10 text-sm text-gray-500">
 								Configura los parámetros y presiona “Calcular Proyección”.
@@ -180,26 +234,62 @@ export default function CreditoSimulator() {
 									/>
 								</div>
 
-								{/* Chart */}
-								<div className="shrink-0 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+								{comp && comp.aporte > 0 && (
+									<ComparativaAbonos
+										resumenes={comp.resumenes}
+										destino={comp.destino}
+										tipo={comp.tipo}
+										aporte={comp.aporte}
+										mesAbono={comp.mesAbono}
+										esCuotaConstante={comp.sistema === "cuotaConstante"}
+									/>
+								)}
+
+								{/* Chart: ocupa el alto restante de la columna */}
+								<div className="flex min-h-[220px] flex-1 flex-col rounded-lg border border-white/10 bg-white/[0.03] p-3">
+									<div className="mb-1 flex shrink-0 justify-end">
+										<a
+											href="#tabla-amortizacion"
+											className="text-[11px] text-gray-400 underline decoration-white/20 transition-colors hover:text-palette-lime"
+										>
+											Ver tabla de amortización ↓
+										</a>
+									</div>
 									<AmortChart data={r.chart} />
 								</div>
-
-								{/* Tabla de amortización */}
-								{tab === "UVR" && uvrResult ? (
-									<Resultados filas={uvrResult.filas} cols={COLS_UVR} />
-								) : (
-									pesosResult && (
-										<Resultados filas={pesosResult.filas} cols={COLS_PESOS} />
-									)
-								)}
 							</>
 						)}
 					</section>
 				</div>
 			</div>
 
-			<footer className="mt-8 shrink-0 text-center text-xs text-gray-600">
+			{r && (
+				<section
+					id="tabla-amortizacion"
+					className="mt-6 shrink-0 scroll-mt-4"
+				>
+					<div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+						<h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400">
+							Tabla de amortización
+						</h2>
+						<p className="text-[11px] text-gray-500">
+							{r.filas.length} meses ·{" "}
+							{tab === "UVR" ? "línea UVR" : "línea pesos"}
+						</p>
+					</div>
+					<div className="h-[440px]">
+						{tab === "UVR" && uvrResult ? (
+							<Resultados filas={uvrResult.filas} cols={COLS_UVR} />
+						) : (
+							pesosResult && (
+								<Resultados filas={pesosResult.filas} cols={COLS_PESOS} />
+							)
+						)}
+					</div>
+				</section>
+			)}
+
+			<footer className="mt-8 shrink-0 pb-24 text-center text-xs text-gray-600">
 				Simulación informativa · No constituye cotización formal · Verifique tasas
 				y seguros con su entidad financiera ·{" "}
 				<Link

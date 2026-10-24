@@ -4,6 +4,14 @@
 
 export type SistemaAmortizacion = "cuotaConstante" | "abonoConstante";
 
+// Ley 546/1999, art. 17 num. 8: en los prepagos parciales el deudor elige si
+// el monto abonado disminuye el valor de la cuota o el plazo de la obligación.
+export type DestinoAbono = "plazo" | "cuota";
+
+// "unico" aplica el aporte una sola vez en `mesAbono`; "mensual" lo repite
+// todos los meses (comportamiento histórico del visor).
+export type TipoAporte = "mensual" | "unico";
+
 export interface BaseParams {
 	valorInmueble: number;
 	porcentajeCredito: number; // 50..100
@@ -13,7 +21,10 @@ export interface BaseParams {
 	descuentoTasa: number; // % EA
 	seguroVidaPct: number; // % mensual s/ saldo
 	seguroHogarPct: number; // % mensual s/ construcción
-	aporteExtra: number; // COP/mes (solo cuota constante)
+	aporteExtra: number; // COP
+	destinoAbono?: DestinoAbono; // por defecto "plazo"
+	tipoAporte?: TipoAporte; // por defecto "unico"
+	mesAbono?: number; // mes del aporte único (1..n)
 }
 
 export interface UVRParams extends BaseParams {
@@ -57,6 +68,14 @@ export interface Resumen {
 	finNota: string;
 	totalPagado: number;
 	interesAcum: number;
+	destinoAbono: DestinoAbono;
+	// Cuota exigida (interés + capital programado), sin aporte ni seguros.
+	// En UVR se expresa en COP con la UVR del mes correspondiente.
+	cuotaExigida1: number;
+	cuotaExigidaFinal: number;
+	// Reducción de la cuota exigida atribuible al abono (0 si no aplica).
+	// En UVR se mide en UVR para que la inflación no distorsione el porcentaje.
+	reduccionCuotaPct: number;
 }
 
 export interface Simulacion<F> {
@@ -70,11 +89,30 @@ export interface Simulacion<F> {
 	};
 }
 
+export interface Comparativa<F> {
+	sinAbono: Simulacion<F>;
+	plazo: Simulacion<F>;
+	cuota: Simulacion<F>;
+}
+
 const EARaMensual = (ea: number) => Math.pow(1 + ea, 1 / 12) - 1;
 
 // Cuota del sistema francés (mes 1..n con tasa mensual equivalente)
 const cuotaFrancesa = (monto: number, i: number, n: number) =>
 	i > 0 ? monto * ((i * Math.pow(1 + i, n)) / (Math.pow(1 + i, n) - 1)) : monto / n;
+
+// Monto del aporte que corresponde al mes según la frecuencia elegida.
+function aporteDelMes(
+	p: BaseParams,
+	n: number,
+	mes: number,
+	monto: number,
+): number {
+	if (!(monto > 0)) return 0;
+	if ((p.tipoAporte ?? "unico") === "mensual") return monto;
+	const mesAbono = Math.min(Math.max(1, Math.round(p.mesAbono ?? 1)), n);
+	return mes === mesAbono ? monto : 0;
+}
 
 function resumenComun(
 	p: BaseParams,
@@ -86,6 +124,11 @@ function resumenComun(
 	mesFinCredito: number,
 	totalPagado: number,
 	interesAcum: number,
+	extra: {
+		destinoAbono: DestinoAbono;
+		cuotaExigida1: number;
+		cuotaExigidaFinal: number;
+	},
 ): Resumen {
 	let cuotaAnio5Nota = "";
 	let cuotaAnio5Val: number | null = cuotaAnio5;
@@ -97,6 +140,17 @@ function resumenComun(
 		cuotaAnio5Nota = "N/A (Cancelado antes)";
 	}
 
+	let finNota: string;
+	if (mesFinCredito < n) {
+		finNota = `Cancela ${n - mesFinCredito} meses antes`;
+	} else if (p.aporteExtra > 0 && extra.destinoAbono === "cuota") {
+		finNota = "Plazo contratado · cuota reducida";
+	} else if (p.aporteExtra > 0) {
+		finNota = "Sin efecto";
+	} else {
+		finNota = "Plazo contratado";
+	}
+
 	return {
 		montoCOP: p.valorInmueble * (p.porcentajeCredito / 100),
 		montoUVR: null,
@@ -106,14 +160,13 @@ function resumenComun(
 		cuotaAnio5Nota,
 		cuotaFinal,
 		finCreditoMes: mesFinCredito,
-		finNota:
-			mesFinCredito < n
-				? `Cancela ${n - mesFinCredito} meses antes`
-				: p.aporteExtra > 0
-					? "Sin efecto"
-					: "Plazo contratado",
+		finNota,
 		totalPagado,
 		interesAcum,
+		destinoAbono: extra.destinoAbono,
+		cuotaExigida1: extra.cuotaExigida1,
+		cuotaExigidaFinal: extra.cuotaExigidaFinal,
+		reduccionCuotaPct: 0,
 	};
 }
 
@@ -158,7 +211,8 @@ export function simularUVR(p: UVRParams): Simulacion<FilaUVR> {
 		);
 	}
 
-	const aporteExtra = p.sistema === "cuotaConstante" ? Math.max(0, p.aporteExtra || 0) : 0;
+	const destinoAbono = p.destinoAbono ?? "plazo";
+	const aporteExtra = Math.max(0, p.aporteExtra || 0);
 	const valorConstruible = p.valorInmueble * 0.8;
 	const tasaFinalEA = Math.max(0, (p.tasaBaseEA - p.descuentoTasa) / 100);
 
@@ -173,12 +227,19 @@ export function simularUVR(p: UVRParams): Simulacion<FilaUVR> {
 
 	let saldoUVR = montoUVR;
 	let uvrActual = p.valorUVR;
+	// Estado de la cuota exigida: constante salvo que el abono reduzca cuota.
+	let cuotaUVRActual = cuotaUVRFija;
+	let abonoUVRActual = abonoConstanteUVR;
 	let mesFinCredito = n;
 	let totalPagado = 0;
 	let interesAcum = 0;
 	let cuota1 = 0;
 	let cuotaAnio5 = 0;
 	let cuotaFinal = 0;
+	let cuotaExigida1 = 0;
+	let cuotaExigidaFinal = 0;
+	let cuotaExigida1UVR = 0;
+	let cuotaExigidaFinalUVR = 0;
 	let lastCuota = 0;
 	let lastSaldo = 0;
 
@@ -187,58 +248,76 @@ export function simularUVR(p: UVRParams): Simulacion<FilaUVR> {
 
 	for (let mes = 1; mes <= n; mes++) {
 		const interesUVR = saldoUVR * iMensual;
-		let cuotaUVR = 0;
-		let aporteExtraUVR = 0;
-		let abonoCapitalUVR: number;
-
-		if (p.sistema === "cuotaConstante") {
-			const abonoBase = Math.min(cuotaUVRFija - interesUVR, saldoUVR);
-			const abonoTotalUVR = Math.min(
-				cuotaUVRFija + aporteExtra / uvrActual,
-				interesUVR + saldoUVR,
-			);
-			abonoCapitalUVR = abonoTotalUVR - interesUVR;
-			aporteExtraUVR = Math.max(0, abonoCapitalUVR - abonoBase);
-			cuotaUVR = interesUVR + abonoBase; // cuota exigida (parcial si cierra este mes)
-		} else {
-			abonoCapitalUVR = abonoConstanteUVR;
-			cuotaUVR = abonoCapitalUVR + interesUVR;
-		}
+		const abonoBaseUVR =
+			p.sistema === "cuotaConstante"
+				? Math.min(cuotaUVRActual - interesUVR, saldoUVR)
+				: Math.min(abonoUVRActual, saldoUVR);
+		const aporteMesUVR = aporteDelMes(p, n, mes, aporteExtra) / uvrActual;
+		const abonoExtraUVR = Math.min(
+			aporteMesUVR,
+			Math.max(0, saldoUVR - abonoBaseUVR),
+		);
+		const abonoCapitalUVR = abonoBaseUVR + abonoExtraUVR;
+		const cuotaUVR = interesUVR + abonoBaseUVR; // cuota exigida (parcial si cierra este mes)
+		const cuotaExigidaUVR =
+			p.sistema === "cuotaConstante"
+				? cuotaUVRActual
+				: abonoUVRActual + interesUVR;
 
 		saldoUVR -= abonoCapitalUVR;
 		if (saldoUVR < 0.01) saldoUVR = 0; // corrección de redondeo final
 		if (saldoUVR === 0 && mes < n) mesFinCredito = mes;
-		const abonoProgramadoUVR = abonoCapitalUVR - aporteExtraUVR;
 
 		interesAcum += interesUVR * uvrActual;
 
 		const segurosCOP =
 			saldoUVR * uvrActual * (p.seguroVidaPct / 100) +
 			valorConstruible * (p.seguroHogarPct / 100);
-		const cuotaCOP = (cuotaUVR + aporteExtraUVR) * uvrActual + segurosCOP;
+		const cuotaCOP = (cuotaUVR + abonoExtraUVR) * uvrActual + segurosCOP;
+		const cuotaExigidaCOP = cuotaUVR * uvrActual + segurosCOP;
 		const saldoCOP = saldoUVR * uvrActual;
 		totalPagado += cuotaCOP;
 
-		if (mes === 1) cuota1 = cuotaCOP;
+		if (mes === 1) {
+			cuota1 = cuotaCOP;
+			cuotaExigida1 = cuotaExigidaUVR * uvrActual;
+			cuotaExigida1UVR = cuotaExigidaUVR;
+		}
 		if (mes === 60 && saldoUVR > 0) cuotaAnio5 = cuotaCOP;
 		cuotaFinal = cuotaCOP;
-		lastCuota = cuotaCOP;
+		cuotaExigidaFinal = cuotaExigidaUVR * uvrActual;
+		cuotaExigidaFinalUVR = cuotaExigidaUVR;
+		lastCuota = cuotaExigidaCOP;
 		lastSaldo = saldoCOP;
 
-		muestrear(chart, mes, n, paso, cuotaCOP, saldoCOP, interesAcum);
+		muestrear(chart, mes, n, paso, cuotaExigidaCOP, saldoCOP, interesAcum);
 
 		filas.push({
 			mes,
 			uvr: uvrActual,
 			cuotaUVR,
 			interesUVR,
-			abonoCapitalUVR: abonoProgramadoUVR,
+			abonoCapitalUVR: abonoBaseUVR,
 			saldoUVR,
-			aporteExtraCOP: aporteExtraUVR * uvrActual,
+			aporteExtraCOP: abonoExtraUVR * uvrActual,
 			segurosCOP,
 			cuotaTotalCOP: cuotaCOP,
 			saldoCOP,
 		});
+
+		// Re-amortización para el mes siguiente: solo si el abono va a cuota.
+		if (
+			destinoAbono === "cuota" &&
+			abonoExtraUVR > 0 &&
+			saldoUVR > 0 &&
+			mes < n
+		) {
+			if (p.sistema === "cuotaConstante") {
+				cuotaUVRActual = cuotaFrancesa(saldoUVR, iMensual, n - mes);
+			} else {
+				abonoUVRActual = saldoUVR / (n - mes);
+			}
+		}
 
 		// La UVR crece DESPUÉS del pago, con la inflación proyectada
 		uvrActual *= 1 + infMensual;
@@ -251,8 +330,13 @@ export function simularUVR(p: UVRParams): Simulacion<FilaUVR> {
 	const resumen = resumenComun(
 		{ ...p, aporteExtra }, tasaFinalEA, n, cuota1, cuotaAnio5, cuotaFinal,
 		mesFinCredito, totalPagado, interesAcum,
+		{ destinoAbono, cuotaExigida1, cuotaExigidaFinal },
 	);
 	resumen.montoUVR = montoUVR;
+	resumen.reduccionCuotaPct =
+		destinoAbono === "cuota" && cuotaExigida1UVR > 0
+			? Math.max(0, 1 - cuotaExigidaFinalUVR / cuotaExigida1UVR)
+			: 0;
 	return { filas, resumen, chart };
 }
 
@@ -261,7 +345,8 @@ export function simularPesos(p: BaseParams): Simulacion<FilaPesos> {
 		throw new Error("Revise los campos: valor del inmueble y tasa deben ser válidos.");
 	}
 
-	const aporteExtra = p.sistema === "cuotaConstante" ? Math.max(0, p.aporteExtra || 0) : 0;
+	const destinoAbono = p.destinoAbono ?? "plazo";
+	const aporteExtra = Math.max(0, p.aporteExtra || 0);
 	const valorConstruible = p.valorInmueble * 0.8;
 	const tasaFinalEA = Math.max(0, (p.tasaBaseEA - p.descuentoTasa) / 100);
 
@@ -273,12 +358,17 @@ export function simularPesos(p: BaseParams): Simulacion<FilaPesos> {
 	const paso = Math.max(1, Math.ceil(n / 60));
 
 	let saldo = montoCOP;
+	// Estado de la cuota exigida: constante salvo que el abono reduzca cuota.
+	let cuotaActual = cuotaFija;
+	let abonoActual = abonoConstanteCOP;
 	let mesFinCredito = n;
 	let totalPagado = 0;
 	let interesAcum = 0;
 	let cuota1 = 0;
 	let cuotaAnio5 = 0;
 	let cuotaFinal = 0;
+	let cuotaExigida1 = 0;
+	let cuotaExigidaFinal = 0;
 	let lastCuota = 0;
 	let lastSaldo = 0;
 
@@ -287,21 +377,16 @@ export function simularPesos(p: BaseParams): Simulacion<FilaPesos> {
 
 	for (let mes = 1; mes <= n; mes++) {
 		const interes = saldo * iMensual;
-		let cuota = 0;
-		let aporteExtraCOP = 0;
-		let abonoCapital: number;
-
-		if (p.sistema === "cuotaConstante") {
-			const abonoBase = Math.min(cuotaFija - interes, saldo);
-			const abonoTotal = Math.min(cuotaFija + aporteExtra, interes + saldo);
-			abonoCapital = abonoTotal - interes;
-			aporteExtraCOP = Math.max(0, abonoCapital - abonoBase);
-			cuota = interes + abonoBase; // cuota exigida (parcial si cierra este mes)
-		} else {
-			abonoCapital = abonoConstanteCOP;
-			cuota = abonoCapital + interes;
-		}
-		const abonoProgramado = abonoCapital - aporteExtraCOP;
+		const abonoBase =
+			p.sistema === "cuotaConstante"
+				? Math.min(cuotaActual - interes, saldo)
+				: Math.min(abonoActual, saldo);
+		const aporteMes = aporteDelMes(p, n, mes, aporteExtra);
+		const abonoExtra = Math.min(aporteMes, Math.max(0, saldo - abonoBase));
+		const abonoCapital = abonoBase + abonoExtra;
+		const cuota = interes + abonoBase; // cuota exigida (parcial si cierra este mes)
+		const cuotaExigida =
+			p.sistema === "cuotaConstante" ? cuotaActual : abonoActual + interes;
 
 		saldo -= abonoCapital;
 		if (saldo < 0.01) saldo = 0;
@@ -311,39 +396,73 @@ export function simularPesos(p: BaseParams): Simulacion<FilaPesos> {
 
 		const segurosCOP =
 			saldo * (p.seguroVidaPct / 100) + valorConstruible * (p.seguroHogarPct / 100);
-		const cuotaTotalCOP = cuota + aporteExtraCOP + segurosCOP;
+		const cuotaTotalCOP = cuota + abonoExtra + segurosCOP;
+		const cuotaExigidaCOP = cuota + segurosCOP;
 		totalPagado += cuotaTotalCOP;
 
-		if (mes === 1) cuota1 = cuotaTotalCOP;
+		if (mes === 1) {
+			cuota1 = cuotaTotalCOP;
+			cuotaExigida1 = cuotaExigida;
+		}
 		if (mes === 60 && saldo > 0) cuotaAnio5 = cuotaTotalCOP;
 		cuotaFinal = cuotaTotalCOP;
-		lastCuota = cuotaTotalCOP;
+		cuotaExigidaFinal = cuotaExigida;
+		lastCuota = cuotaExigidaCOP;
 		lastSaldo = saldo;
 
-		muestrear(chart, mes, n, paso, cuotaTotalCOP, saldo, interesAcum);
+		muestrear(chart, mes, n, paso, cuotaExigidaCOP, saldo, interesAcum);
 
 		filas.push({
 			mes,
 			cuota,
 			interes,
-			abonoCapital: abonoProgramado,
+			abonoCapital: abonoBase,
 			saldo,
-			aporteExtraCOP,
+			aporteExtraCOP: abonoExtra,
 			segurosCOP,
 			cuotaTotalCOP,
 		});
+
+		// Re-amortización para el mes siguiente: solo si el abono va a cuota.
+		if (destinoAbono === "cuota" && abonoExtra > 0 && saldo > 0 && mes < n) {
+			if (p.sistema === "cuotaConstante") {
+				cuotaActual = cuotaFrancesa(saldo, iMensual, n - mes);
+			} else {
+				abonoActual = saldo / (n - mes);
+			}
+		}
 
 		if (saldo === 0) break;
 	}
 
 	cerrarMuestreo(chart, filas.length, lastCuota, lastSaldo, interesAcum);
 
+	const resumen = resumenComun(
+		{ ...p, aporteExtra }, tasaFinalEA, n, cuota1, cuotaAnio5, cuotaFinal,
+		mesFinCredito, totalPagado, interesAcum,
+		{ destinoAbono, cuotaExigida1, cuotaExigidaFinal },
+	);
+	resumen.reduccionCuotaPct =
+		destinoAbono === "cuota" && cuotaExigida1 > 0
+			? Math.max(0, 1 - cuotaExigidaFinal / cuotaExigida1)
+			: 0;
+	return { filas, resumen, chart };
+}
+
+// Corre las tres variantes (sin abono, reducir plazo, reducir cuota) para que
+// la UI pueda comparar sin repetir la lógica de negocio.
+export function compararPesos(p: BaseParams): Comparativa<FilaPesos> {
 	return {
-		filas,
-		resumen: resumenComun(
-			{ ...p, aporteExtra }, tasaFinalEA, n, cuota1, cuotaAnio5, cuotaFinal,
-			mesFinCredito, totalPagado, interesAcum,
-		),
-		chart,
+		sinAbono: simularPesos({ ...p, aporteExtra: 0 }),
+		plazo: simularPesos({ ...p, destinoAbono: "plazo" }),
+		cuota: simularPesos({ ...p, destinoAbono: "cuota" }),
+	};
+}
+
+export function compararUVR(p: UVRParams): Comparativa<FilaUVR> {
+	return {
+		sinAbono: simularUVR({ ...p, aporteExtra: 0 }),
+		plazo: simularUVR({ ...p, destinoAbono: "plazo" }),
+		cuota: simularUVR({ ...p, destinoAbono: "cuota" }),
 	};
 }

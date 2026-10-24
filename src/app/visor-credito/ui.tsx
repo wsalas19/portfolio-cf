@@ -6,7 +6,13 @@
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Input } from "@/components/ui/input";
-import { FilaPesos, FilaUVR } from "@/lib/credito";
+import {
+	DestinoAbono,
+	FilaPesos,
+	FilaUVR,
+	Resumen,
+	TipoAporte,
+} from "@/lib/credito";
 import { Field, MONO, TIPS, fmt } from "./data";
 
 // Popover position:fixed para escapar del clip de los contenedores con scroll.
@@ -103,13 +109,14 @@ export function FormFields({
 	values: Record<string, string>;
 	onChangeAction: (id: string, v: string) => void;
 }) {
+	const visibles = fields.filter((f) => !f.showIf || f.showIf(values));
 	return (
 		<div className="grid grid-cols-1 gap-4 gap-x-4 sm:grid-cols-2">
-			{fields.map((f, i) => (
+			{visibles.map((f, i) => (
 				<div
 					key={f.id}
 					className={
-						fields.length % 2 === 1 && i === fields.length - 1
+						visibles.length % 2 === 1 && i === visibles.length - 1
 							? "sm:col-span-2"
 							: ""
 					}
@@ -166,7 +173,7 @@ export type Col<F> = {
 export const COLS_UVR: Col<FilaUVR>[] = [
 	{ h: "Mes", mo: true, cell: (f) => String(f.mes) },
 	{ h: "Valor UVR", tip: TIPS.uvr, num: true, cell: (f) => f.uvr.toFixed(2) },
-	{ h: "Cuota (UVR)", tip: TIPS.cuotaUVR, num: true, cell: (f) => f.cuotaUVR.toFixed(2) },
+	{ h: "Cuota (UVR)", tip: "Cuota exigida en UVR. Constante en 'Cuota Constante', salvo que el aporte se destine a reducir cuota.", num: true, cell: (f) => f.cuotaUVR.toFixed(2) },
 	{ h: "Interés (UVR)", tip: TIPS.interesUVR, num: true, cell: (f) => f.interesUVR.toFixed(2) },
 	{ h: "Abono (UVR)", tip: TIPS.abonoUVR, num: true, cell: (f) => f.abonoCapitalUVR.toFixed(2) },
 	{ h: "Saldo (UVR)", tip: TIPS.saldoUVR, num: true, cell: (f) => f.saldoUVR.toFixed(2) },
@@ -180,7 +187,7 @@ export const COLS_PESOS: Col<FilaPesos>[] = [
 	{ h: "Mes", mo: true, cell: (f) => String(f.mes) },
 	{
 		h: "Cuota (COP)",
-		tip: "Cuota exigida (sistema francés): constante todo el crédito, con tasa fija en pesos sin indexación.",
+		tip: "Cuota exigida (sistema francés). Constante todo el crédito, salvo que el aporte se destine a reducir cuota.",
 		num: true,
 		cell: (f) => fmt(f.cuota),
 	},
@@ -208,9 +215,120 @@ export const COLS_PESOS: Col<FilaPesos>[] = [
 	},
 ];
 
+const finTexto = (mes: number) => `${Math.floor(mes / 12)}a ${mes % 12}m`;
+
+// Comparativa siempre visible: el aporte se corre en las dos variantes para
+// mostrar el trade-off entre ahorro de intereses y alivio de caja.
+export function ComparativaAbonos({
+	resumenes,
+	destino,
+	tipo,
+	aporte,
+	mesAbono,
+	esCuotaConstante,
+}: {
+	resumenes: { sinAbono: Resumen; plazo: Resumen; cuota: Resumen };
+	destino: DestinoAbono;
+	tipo: TipoAporte;
+	aporte: number;
+	mesAbono: number;
+	esCuotaConstante: boolean;
+}) {
+	const base = resumenes.sinAbono;
+	const items = [
+		{
+			key: "plazo" as const,
+			titulo: "Reducir plazo",
+			desc: "Misma cuota, menos meses",
+			r: resumenes.plazo,
+		},
+		{
+			key: "cuota" as const,
+			titulo: "Reducir cuota",
+			desc: "Mismo plazo, cuota más baja",
+			r: resumenes.cuota,
+		},
+	];
+
+	return (
+		<div className="shrink-0 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+			<div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+				<h2 className="text-[11px] font-medium uppercase tracking-wider text-gray-400">
+					Efecto del aporte de {fmt(aporte)}
+					{tipo === "unico" ? ` en el mes ${mesAbono}` : " cada mes"}
+				</h2>
+				<p className="text-[11px] text-gray-500">
+					Sin abono: intereses {fmt(base.interesAcum)} · fin{" "}
+					{finTexto(base.finCreditoMes)}
+				</p>
+			</div>
+			<div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+				{items.map(({ key, titulo, desc, r }) => {
+					const elegido = destino === key;
+					const ahorro = Math.max(0, base.interesAcum - r.interesAcum);
+					return (
+						<div
+							key={key}
+							className={`rounded-md border px-3 py-2 ${
+								elegido
+									? "border-palette-lime/60 bg-palette-lime/[0.06]"
+									: "border-white/10 bg-palette-card/40"
+							}`}
+						>
+							<div className="flex items-center justify-between gap-2">
+								<span className="text-xs font-semibold text-white">
+									{titulo}
+								</span>
+								{elegido && (
+									<span className="rounded bg-palette-lime px-1.5 py-0.5 text-[10px] font-bold text-gray-900">
+										Elegido
+									</span>
+								)}
+							</div>
+							<span className="block text-[10px] text-gray-500">{desc}</span>
+							<dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+								<dt className="text-gray-500">Cuota final (sin seguros)</dt>
+								<dd className={`text-right text-white ${MONO}`}>
+									{fmt(r.cuotaExigidaFinal)}
+									{key === "cuota" &&
+										esCuotaConstante &&
+										r.reduccionCuotaPct > 0.005 && (
+											<span className="ml-1 text-palette-lime">
+												{" "}−{Math.round(r.reduccionCuotaPct * 100)}%
+											</span>
+										)}
+								</dd>
+								<dt className="text-gray-500">Fin del crédito</dt>
+								<dd className={`text-right text-white ${MONO}`}>
+									{finTexto(r.finCreditoMes)}
+								</dd>
+								<dt className="text-gray-500">Ahorro en intereses</dt>
+								<dd className={`text-right text-palette-lime ${MONO}`}>
+									{fmt(ahorro)}
+								</dd>
+								<dt className="text-gray-500">Total pagado</dt>
+								<dd className={`text-right text-white ${MONO}`}>
+									{fmt(r.totalPagado)}
+								</dd>
+							</dl>
+						</div>
+					);
+				})}
+			</div>
+			{tipo === "mensual" && destino === "cuota" && (
+				<p className="mt-2 text-[11px] leading-snug text-gray-500">
+					Con aportes mensuales la cuota exigida baja cada mes y el crédito
+					también puede cerrarse antes: el ahorro depende de que mantengas el
+					aporte.
+				</p>
+			)}
+		</div>
+	);
+}
+
 export function Resultados<F>({ filas, cols }: { filas: F[]; cols: Col<F>[] }) {
 	return (
-		<div className="min-h-0 flex-1 overflow-auto max-h-[70vh] lg:max-h-none rounded-md border border-white/10">
+		<div className="h-full overflow-auto rounded-md border border-white/10">
 			<table className="w-full border-collapse">
 				<thead>
 					<tr>

@@ -31,7 +31,9 @@ export default function VisorCreditoPage() {
 					el total desembolsado hasta el cierre del crédito. Puedes ajustar el
 					valor del inmueble, el porcentaje a financiar, el plazo, la tasa
 					efectiva anual (E.A.), el valor de la UVR y descuentos de programas
-					como FRECH, además de simular abonos adicionales a capital.
+					como FRECH. Si haces un abono adicional, eliges si reduce el plazo
+					(misma cuota) o la cuota (mismo plazo), y ves el ahorro de cada
+					opción en paralelo.
 				</p>
 				<p className="mt-4 leading-relaxed">
 					Los valores por defecto usan tasas de referencia del Fondo Nacional

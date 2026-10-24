@@ -51,7 +51,7 @@ export default function AmortChart({ data }: { data: Simulacion<unknown>["chart"
 				labels: data.labels,
 				datasets: [
 					{
-						label: "Cuota Mensual (COP)",
+						label: "Cuota exigida + seguros (COP)",
 						data: data.cuotas,
 						borderColor: C_LIME,
 						backgroundColor: "rgba(212, 255, 77, 0.12)",
@@ -105,7 +105,7 @@ export default function AmortChart({ data }: { data: Simulacion<unknown>["chart"
 						position: "left",
 						beginAtZero: false,
 						grid: { color: "#6f6f6f" },
-						title: { display: true, text: "Cuota mensual", font: { family: sans, size: 11 } },
+						title: { display: true, text: "Cuota exigida", font: { family: sans, size: 11 } },
 						ticks: {
 							maxTicksLimit: 15,
 							font: { family: mono, size: 10 },
@@ -150,7 +150,7 @@ export default function AmortChart({ data }: { data: Simulacion<unknown>["chart"
 	}, [data]);
 
 	return (
-		<div className="relative h-[clamp(200px,30vh,320px)]">
+		<div className="relative min-h-[180px] flex-1">
 			<canvas ref={canvasRef} />
 		</div>
 	);

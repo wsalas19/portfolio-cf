@@ -15,7 +15,18 @@ export type Field = {
 	options?: Option[];
 	step?: string;
 	min?: string;
+	// Campo condicional: solo se muestra si el formulario cumple la condición.
+	showIf?: (values: Record<string, string>) => boolean;
 };
+
+const destinos: Option[] = [
+	{ value: "plazo", label: "Reducir plazo (misma cuota)" },
+	{ value: "cuota", label: "Reducir cuota (mismo plazo)" },
+];
+const frecuencias: Option[] = [
+	{ value: "unico", label: "Único (un mes)" },
+	{ value: "mensual", label: "Mensual (recurrente)" },
+];
 
 // Paleta del portafolio (tailwind.config.ts · theme.extend.colors.palette)
 export const C_LIME = "#d4ff4d";
@@ -28,13 +39,18 @@ const siNo: Option[] = [
 ];
 const pct = (desde: number, hasta: number): Option[] => {
 	const out: Option[] = [];
-	for (let v = desde; v <= hasta; v += 10) out.push({ value: String(v), label: `${v}%` });
+	for (let v = desde; v <= hasta; v += 10)
+		out.push({ value: String(v), label: `${v}%` });
 	return out;
 };
 
 export const UVR_FIELDS: Field[] = [
 	{ id: "valorInmueble", label: "Valor del Inmueble (COP)", step: "1000000" },
-	{ id: "porcentajeCredito", label: "Porcentaje a Financiar", options: pct(50, 90) },
+	{
+		id: "porcentajeCredito",
+		label: "Porcentaje a Financiar",
+		options: pct(50, 90),
+	},
 	{
 		id: "plazoAnios",
 		label: "Plazo del Crédito (Años)",
@@ -85,16 +101,39 @@ export const UVR_FIELDS: Field[] = [
 	},
 	{
 		id: "aporteExtra",
-		label: "Aporte Adicional a Capital (COP/mes)",
+		label: "Aporte Adicional a Capital (COP)",
 		step: "100000",
 		min: "0",
-		note: "Abonos inteligentes (Ley 546/99) · solo Cuota Constante",
+		note: "Prepago parcial sin penalidad (Ley 546/99)",
+	},
+	{
+		id: "destinoAbono",
+		label: "Destino del Aporte",
+		options: destinos,
+		note: "Tú eliges si el abono baja la cuota o el plazo",
+	},
+	{
+		id: "tipoAporte",
+		label: "Frecuencia del Aporte",
+		options: frecuencias,
+	},
+	{
+		id: "mesAbono",
+		label: "Mes del Aporte Único",
+		step: "1",
+		min: "1",
+		note: "Mes en que se aplica el abono (1 = primer mes)",
+		showIf: (v) => v.tipoAporte === "unico",
 	},
 ];
 
 export const PESOS_FIELDS: Field[] = [
 	{ id: "pValorInmueble", label: "Valor del Inmueble (COP)", step: "1000000" },
-	{ id: "pPorcentajeCredito", label: "Porcentaje a Financiar", options: pct(50, 100) },
+	{
+		id: "pPorcentajeCredito",
+		label: "Porcentaje a Financiar",
+		options: pct(50, 100),
+	},
 	{
 		id: "pPlazoAnios",
 		label: "Plazo del Crédito (Años)",
@@ -140,10 +179,29 @@ export const PESOS_FIELDS: Field[] = [
 	},
 	{
 		id: "pAporteExtra",
-		label: "Aporte Adicional a Capital (COP/mes)",
+		label: "Aporte Adicional (COP)",
 		step: "100000",
 		min: "0",
-		note: "Abonos inteligentes (Ley 546/99) · solo Cuota Constante",
+		note: "Prepago parcial sin penalidad (Ley 546/99)",
+	},
+	{
+		id: "pDestinoAbono",
+		label: "Destino del Aporte",
+		options: destinos,
+		note: "Tú eliges si el abono baja la cuota o el plazo",
+	},
+	{
+		id: "pTipoAporte",
+		label: "Frecuencia del Aporte",
+		options: frecuencias,
+	},
+	{
+		id: "pMesAbono",
+		label: "Mes del Aporte Único",
+		step: "1",
+		min: "1",
+		note: "Mes en que se aplica el abono (1 = primer mes)",
+		showIf: (v) => v.pTipoAporte === "unico",
 	},
 ];
 
@@ -159,6 +217,9 @@ export const UVR_DEFAULTS: Record<string, string> = {
 	seguroVidaPct: "0.05",
 	seguroHogarPct: "0.03",
 	aporteExtra: "0",
+	destinoAbono: "plazo",
+	tipoAporte: "unico",
+	mesAbono: "1",
 };
 
 export const PESOS_DEFAULTS: Record<string, string> = {
@@ -171,6 +232,9 @@ export const PESOS_DEFAULTS: Record<string, string> = {
 	pSeguroVidaPct: "0.05",
 	pSeguroHogarPct: "0.03",
 	pAporteExtra: "0",
+	pDestinoAbono: "plazo",
+	pTipoAporte: "unico",
+	pMesAbono: "1",
 };
 
 export type FaqEntry = {
@@ -204,7 +268,8 @@ export const FAQ: FaqEntry[] = [
 		a: "Como regla general, la financiación va hasta el 70% del valor del inmueble para vivienda no VIS y hasta el 80% para vivienda VIS; el resto corresponde a la cuota inicial. Algunas entidades como el FNA financian un porcentaje mayor según el tipo de vivienda y tu vinculación (cesantías o ahorro voluntario). Este simulador permite ajustar el porcentaje entre 50% y 100% para ver el efecto en la cuota.",
 		sources: [
 			{
-				label: "Decreto 1077 de 2015, art. 2.1.11.1 · Condiciones de los créditos de vivienda",
+				label:
+					"Decreto 1077 de 2015, art. 2.1.11.1 · Condiciones de los créditos de vivienda",
 				url: "https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=77216",
 			},
 			{
@@ -218,14 +283,29 @@ export const FAQ: FaqEntry[] = [
 		a: "En cuota constante (sistema francés) pagas siempre la misma cuota: al inicio casi todo es interés y al final casi todo es capital. En abono constante a capital pagas una cuota mayor al principio que va bajando, porque amortizas la misma porción de capital cada mes; el total de intereses es menor.",
 		sources: [
 			{
-				label: "Universidad de Valladolid · Sistema de amortización francés (PDF)",
+				label:
+					"Universidad de Valladolid · Sistema de amortización francés (PDF)",
 				url: "https://uvadoc.uva.es/bitstream/handle/10324/15849/TFG-E-178.pdf",
 			},
 		],
 	},
 	{
 		q: "¿Los abonos a capital bajan la cuota o el plazo?",
-		a: "La Ley 546 de 1999 permite prepagar el crédito de vivienda total o parcialmente en cualquier momento y sin penalidad. En los prepagos parciales, el deudor tiene derecho a elegir si el monto abonado reduce el valor de la cuota o el plazo de la obligación. Este simulador modela la reducción de plazo: el aporte adicional se suma a la cuota exigida y el crédito se cierra antes.",
+		a: "La Ley 546 de 1999 permite prepagar el crédito de vivienda total o parcialmente en cualquier momento y sin penalidad. En los prepagos parciales, el deudor tiene derecho a elegir si el monto abonado reduce el valor de la cuota o el plazo de la obligación; la Superintendencia Financiera ha reiterado que la entidad debe acatar esa elección y actualizar la proyección de las cuotas. Reducir el plazo mantiene la cuota y suele ahorrar más intereses; reducir la cuota mantiene el plazo y baja el pago mensual. Este simulador modela ambas opciones y te muestra el ahorro de cada una.",
+		sources: [
+			{
+				label: "Ley 546 de 1999, art. 17 num. 8 (texto completo)",
+				url: "https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=180",
+			},
+			{
+				label: "Superfinanciera · Sentencia 20170588 (abonos: cuota o plazo)",
+				url: "https://www.superfinanciera.gov.co/publicaciones/10085300/consumidor-financierofunciones-jurisdiccionales-historico-jurisprudencia-superintendencia-financiera-de-colombiacredito-hipotecario-10085300/",
+			},
+		],
+	},
+	{
+		q: "¿Me conviene reducir la cuota o el plazo?",
+		a: "Depende de tu objetivo. Reducir el plazo mantiene el pago mensual y concentra el ahorro en intereses: en un crédito típico de $240 millones a 20 años, un abono único de $20 millones en el mes 13 puede acortar cerca de 4,5 años y ahorrar más de $120 millones en intereses. Reducir la cuota mantiene el plazo y baja el pago mensual (alrededor de 8% en ese mismo ejemplo), lo que sirve si necesitas liberar flujo de caja, pero el ahorro en intereses es menor. La ley te da el derecho a elegir.",
 		sources: [
 			{
 				label: "Ley 546 de 1999, art. 17 num. 8 (texto completo)",
@@ -267,7 +347,8 @@ export const TIPS: Record<string, string> = {
 		"Parte de la cuota que amortiza deuda: cuota − interés. Crece con el tiempo. No incluye el aporte extra.",
 	saldoUVR:
 		"Deuda pendiente en UVR tras el pago del mes. Base del interés del mes siguiente.",
-	extra: "Abono voluntario a capital (Ley 546/99, sin penalización). Reduce saldo y plazo sin cambiar la cuota.",
+	extra:
+		"Prepago parcial sin penalidad (Ley 546/99). Según el destino elegido reduce el plazo (misma cuota) o la cuota (mismo plazo).",
 	seguros:
 		"Vida: % del saldo (baja al amortizar). Hogar: fijo, ~80% del inmueble. No generan interés.",
 	cuotaTotal: "Lo que pagas este mes: (cuota + extra) × UVR del mes + seguros.",
