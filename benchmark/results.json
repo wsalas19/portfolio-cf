@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-24T21:51:30.179Z",
+  "generatedAt": "2026-10-25T15:38:04.403Z",
   "sites": [
     {
       "name": "vercel",
@@ -18,32 +18,32 @@
       "runs": 3,
       "sites": {
         "vercel": {
-          "performance": 40,
-          "ttfb": 88,
-          "fcp": 1811.5,
-          "lcp": 6146.39,
-          "tbt": 7362.5,
+          "performance": 45,
+          "ttfb": 91,
+          "fcp": 1274.82,
+          "lcp": 5405.82,
+          "tbt": 7143,
           "cls": 0,
-          "speedIndex": 7023.62,
-          "interactive": 15358.39,
-          "totalBytes": 410036,
+          "speedIndex": 5941.79,
+          "interactive": 15204.32,
+          "totalBytes": 410070,
           "requests": 28,
           "resources": {
             "total": {
               "requests": 27,
-              "bytes": 404805
+              "bytes": 404807
             },
             "script": {
               "requests": 14,
-              "bytes": 246448
+              "bytes": 246550
             },
             "font": {
               "requests": 2,
-              "bytes": 61080
+              "bytes": 61074
             },
             "image": {
               "requests": 9,
-              "bytes": 59599
+              "bytes": 59477
             },
             "document": {
               "requests": 1,
@@ -51,7 +51,7 @@
             },
             "stylesheet": {
               "requests": 1,
-              "bytes": 11866
+              "bytes": 11862
             },
             "media": {
               "requests": 0,
@@ -69,46 +69,46 @@
           "lcpElement": null
         },
         "cloudflare": {
-          "performance": 35,
-          "ttfb": 178,
-          "fcp": 2336.27,
-          "lcp": 10721.86,
-          "tbt": 6612.5,
+          "performance": 43,
+          "ttfb": 368,
+          "fcp": 2180.23,
+          "lcp": 6008.58,
+          "tbt": 7057,
           "cls": 0,
-          "speedIndex": 7315.53,
-          "interactive": 17374.27,
-          "totalBytes": 2089557,
-          "requests": 47,
+          "speedIndex": 5028.36,
+          "interactive": 16424.32,
+          "totalBytes": 550278,
+          "requests": 39,
           "resources": {
             "total": {
-              "requests": 46,
-              "bytes": 2083662
-            },
-            "image": {
-              "requests": 8,
-              "bytes": 1672037
+              "requests": 38,
+              "bytes": 544458
             },
             "script": {
               "requests": 26,
-              "bytes": 307043
+              "bytes": 306913
+            },
+            "image": {
+              "requests": 8,
+              "bytes": 136479
             },
             "font": {
               "requests": 2,
-              "bytes": 61676
+              "bytes": 61661
             },
             "document": {
               "requests": 1,
-              "bytes": 27686
+              "bytes": 27696
             },
             "stylesheet": {
               "requests": 1,
-              "bytes": 11454
-            },
-            "other": {
-              "requests": 8,
-              "bytes": 3599
+              "bytes": 11459
             },
             "media": {
+              "requests": 0,
+              "bytes": 0
+            },
+            "other": {
               "requests": 0,
               "bytes": 0
             },
@@ -128,44 +128,44 @@
       "runs": 2,
       "sites": {
         "vercel": {
-          "performance": 58,
-          "ttfb": 91,
-          "fcp": 430.46500000000003,
-          "lcp": 1472.2150000000001,
-          "tbt": 20002.5,
+          "performance": 59,
+          "ttfb": 93,
+          "fcp": 419.16999999999996,
+          "lcp": 1422.42,
+          "tbt": 20112.5,
           "cls": 0,
-          "speedIndex": 3044.71,
-          "interactive": 43726.065,
-          "totalBytes": 397305.5,
+          "speedIndex": 2740.285,
+          "interactive": 43988.445,
+          "totalBytes": 397536,
           "requests": 32,
           "resources": {
             "total": {
               "requests": 31,
-              "bytes": 392036.5
+              "bytes": 392251
             },
             "script": {
               "requests": 16,
-              "bytes": 248733.5
+              "bytes": 248824.5
             },
             "font": {
               "requests": 2,
-              "bytes": 61099.5
+              "bytes": 61114.5
             },
             "image": {
               "requests": 9,
-              "bytes": 31964
+              "bytes": 31951
             },
             "document": {
               "requests": 1,
-              "bytes": 25781.5
+              "bytes": 25782.5
             },
             "other": {
               "requests": 2,
-              "bytes": 12585
+              "bytes": 12704
             },
             "stylesheet": {
               "requests": 1,
-              "bytes": 11873
+              "bytes": 11874.5
             },
             "media": {
               "requests": 0,
@@ -179,44 +179,44 @@
           "lcpElement": null
         },
         "cloudflare": {
-          "performance": 49.5,
-          "ttfb": 335.5,
-          "fcp": 584.25,
-          "lcp": 2306.675,
-          "tbt": 19808.5,
+          "performance": 57.5,
+          "ttfb": 608.5,
+          "fcp": 547.75,
+          "lcp": 1523.825,
+          "tbt": 19464.835,
           "cls": 0,
-          "speedIndex": 3855.4750000000004,
-          "interactive": 43661.435,
-          "totalBytes": 2125916,
-          "requests": 49.5,
+          "speedIndex": 3011.29,
+          "interactive": 43993.035,
+          "totalBytes": 565639.5,
+          "requests": 41,
           "resources": {
             "total": {
-              "requests": 48.5,
-              "bytes": 2120077.5
-            },
-            "image": {
-              "requests": 8,
-              "bytes": 1672041
+              "requests": 40,
+              "bytes": 559808
             },
             "script": {
               "requests": 26,
-              "bytes": 306991
+              "bytes": 307098
+            },
+            "image": {
+              "requests": 8,
+              "bytes": 136056
             },
             "font": {
-              "requests": 2.5,
-              "bytes": 82168
+              "requests": 2,
+              "bytes": 61663
             },
             "document": {
               "requests": 1,
-              "bytes": 27828
+              "bytes": 27586.5
             },
             "other": {
-              "requests": 10,
-              "bytes": 19595.5
+              "requests": 2,
+              "bytes": 15947
             },
             "stylesheet": {
               "requests": 1,
-              "bytes": 11454
+              "bytes": 11457.5
             },
             "media": {
               "requests": 0,
@@ -239,43 +239,43 @@
       "sites": {
         "vercel": {
           "performance": 96,
-          "ttfb": 87,
-          "fcp": 1211.1100000000001,
-          "lcp": 2277.11,
-          "tbt": 146.75,
+          "ttfb": 104,
+          "fcp": 1150.195,
+          "lcp": 2579.6949999999997,
+          "tbt": 127.25,
           "cls": 0,
-          "speedIndex": 1979.2600000000002,
-          "interactive": 2805.885,
-          "totalBytes": 456638.5,
+          "speedIndex": 1779.225,
+          "interactive": 2969.37,
+          "totalBytes": 456672.5,
           "requests": 25,
           "resources": {
             "total": {
               "requests": 24,
-              "bytes": 451393.5
+              "bytes": 451405
             },
             "script": {
               "requests": 17,
-              "bytes": 343557
+              "bytes": 343585.5
             },
             "font": {
               "requests": 2,
-              "bytes": 61113
+              "bytes": 61119
             },
             "document": {
               "requests": 1,
-              "bytes": 15840
+              "bytes": 15841.5
             },
             "other": {
               "requests": 1,
-              "bytes": 15144.5
+              "bytes": 15146
             },
             "stylesheet": {
               "requests": 2,
-              "bytes": 12694
+              "bytes": 12668.5
             },
             "image": {
               "requests": 1,
-              "bytes": 3045
+              "bytes": 3044.5
             },
             "media": {
               "requests": 0,
@@ -289,44 +289,44 @@
           "lcpElement": null
         },
         "cloudflare": {
-          "performance": 92.5,
-          "ttfb": 180.5,
-          "fcp": 1741.59,
-          "lcp": 3080.09,
-          "tbt": 79,
+          "performance": 89.5,
+          "ttfb": 372.5,
+          "fcp": 1964.7799999999997,
+          "lcp": 3419.135,
+          "tbt": 65,
           "cls": 0,
-          "speedIndex": 2835.965,
-          "interactive": 3080.09,
-          "totalBytes": 566978,
-          "requests": 38,
+          "speedIndex": 2543.1899999999996,
+          "interactive": 3419.135,
+          "totalBytes": 524478.5,
+          "requests": 36,
           "resources": {
             "total": {
-              "requests": 37,
-              "bytes": 561143.5
+              "requests": 35,
+              "bytes": 518643.5
             },
             "script": {
               "requests": 28,
-              "bytes": 406307.5
+              "bytes": 406777
             },
             "font": {
-              "requests": 3,
-              "bytes": 102238
+              "requests": 2,
+              "bytes": 61508
             },
             "document": {
               "requests": 1,
-              "bytes": 18937.5
+              "bytes": 18638
             },
             "other": {
-              "requests": 2,
-              "bytes": 18019
+              "requests": 1,
+              "bytes": 17606
             },
             "stylesheet": {
               "requests": 2,
-              "bytes": 12080
+              "bytes": 12244.5
             },
             "image": {
               "requests": 1,
-              "bytes": 3561.5
+              "bytes": 1870
             },
             "media": {
               "requests": 0,
@@ -348,44 +348,44 @@
       "runs": 2,
       "sites": {
         "vercel": {
-          "performance": 91,
-          "ttfb": 88,
-          "fcp": 1257.5500000000002,
-          "lcp": 3434.05,
-          "tbt": 45,
+          "performance": 91.5,
+          "ttfb": 103.5,
+          "fcp": 1311.5749999999998,
+          "lcp": 3130.575,
+          "tbt": 135,
           "cls": 0,
-          "speedIndex": 2492,
-          "interactive": 3434.05,
-          "totalBytes": 482055,
+          "speedIndex": 2007.645,
+          "interactive": 3130.575,
+          "totalBytes": 482167.5,
           "requests": 26,
           "resources": {
             "total": {
               "requests": 25,
-              "bytes": 476786.5
+              "bytes": 476892
             },
             "script": {
               "requests": 17,
-              "bytes": 328555
+              "bytes": 328631.5
             },
             "font": {
               "requests": 3,
-              "bytes": 101804
+              "bytes": 101826
             },
             "document": {
               "requests": 1,
-              "bytes": 15479.5
+              "bytes": 15481
             },
             "other": {
               "requests": 1,
-              "bytes": 15157
+              "bytes": 15162.5
             },
             "stylesheet": {
               "requests": 2,
-              "bytes": 12749
+              "bytes": 12762
             },
             "image": {
               "requests": 1,
-              "bytes": 3042
+              "bytes": 3029
             },
             "media": {
               "requests": 0,
@@ -399,44 +399,44 @@
           "lcpElement": null
         },
         "cloudflare": {
-          "performance": 83.5,
-          "ttfb": 115.5,
-          "fcp": 2391.4,
-          "lcp": 4153.24,
+          "performance": 88.5,
+          "ttfb": 169,
+          "fcp": 2065.37,
+          "lcp": 3511.98,
           "tbt": 0,
           "cls": 0,
-          "speedIndex": 2786.47,
-          "interactive": 4153.24,
-          "totalBytes": 534887.5,
-          "requests": 36,
+          "speedIndex": 2759.92,
+          "interactive": 3511.98,
+          "totalBytes": 532140.5,
+          "requests": 35,
           "resources": {
             "total": {
-              "requests": 35,
-              "bytes": 529055.5
+              "requests": 34,
+              "bytes": 526350
             },
             "script": {
               "requests": 27,
-              "bytes": 375072.5
+              "bytes": 374721.5
             },
             "font": {
               "requests": 3,
-              "bytes": 102656.5
+              "bytes": 102478.5
             },
             "document": {
               "requests": 1,
-              "bytes": 18347
+              "bytes": 18255.5
             },
             "other": {
-              "requests": 2,
-              "bytes": 17968.5
+              "requests": 1,
+              "bytes": 17641.5
             },
             "stylesheet": {
               "requests": 1,
-              "bytes": 11449.5
+              "bytes": 11385
             },
             "image": {
               "requests": 1,
-              "bytes": 3561.5
+              "bytes": 1868
             },
             "media": {
               "requests": 0,

@@ -20,6 +20,9 @@
       "bucket_name": "portfolio-cf-content"
     }
   ],
+  "images": {
+    "binding": "IMAGES"
+  },
   "main": "vinext/server/fetch-handler",
   "assets": {
     "directory": "dist/client",

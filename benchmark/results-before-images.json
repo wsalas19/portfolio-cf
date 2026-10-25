@@ -1,0 +1,455 @@
+{
+  "generatedAt": "2026-10-24T21:51:30.179Z",
+  "sites": [
+    {
+      "name": "vercel",
+      "base": "https://www.wsalas.com"
+    },
+    {
+      "name": "cloudflare",
+      "base": "https://portfolio-cf.wsalas.workers.dev"
+    }
+  ],
+  "cases": [
+    {
+      "case": "home",
+      "path": "/",
+      "formFactor": "mobile",
+      "runs": 3,
+      "sites": {
+        "vercel": {
+          "performance": 40,
+          "ttfb": 88,
+          "fcp": 1811.5,
+          "lcp": 6146.39,
+          "tbt": 7362.5,
+          "cls": 0,
+          "speedIndex": 7023.62,
+          "interactive": 15358.39,
+          "totalBytes": 410036,
+          "requests": 28,
+          "resources": {
+            "total": {
+              "requests": 27,
+              "bytes": 404805
+            },
+            "script": {
+              "requests": 14,
+              "bytes": 246448
+            },
+            "font": {
+              "requests": 2,
+              "bytes": 61080
+            },
+            "image": {
+              "requests": 9,
+              "bytes": 59599
+            },
+            "document": {
+              "requests": 1,
+              "bytes": 25782
+            },
+            "stylesheet": {
+              "requests": 1,
+              "bytes": 11866
+            },
+            "media": {
+              "requests": 0,
+              "bytes": 0
+            },
+            "other": {
+              "requests": 0,
+              "bytes": 0
+            },
+            "third-party": {
+              "requests": 0,
+              "bytes": 0
+            }
+          },
+          "lcpElement": null
+        },
+        "cloudflare": {
+          "performance": 35,
+          "ttfb": 178,
+          "fcp": 2336.27,
+          "lcp": 10721.86,
+          "tbt": 6612.5,
+          "cls": 0,
+          "speedIndex": 7315.53,
+          "interactive": 17374.27,
+          "totalBytes": 2089557,
+          "requests": 47,
+          "resources": {
+            "total": {
+              "requests": 46,
+              "bytes": 2083662
+            },
+            "image": {
+              "requests": 8,
+              "bytes": 1672037
+            },
+            "script": {
+              "requests": 26,
+              "bytes": 307043
+            },
+            "font": {
+              "requests": 2,
+              "bytes": 61676
+            },
+            "document": {
+              "requests": 1,
+              "bytes": 27686
+            },
+            "stylesheet": {
+              "requests": 1,
+              "bytes": 11454
+            },
+            "other": {
+              "requests": 8,
+              "bytes": 3599
+            },
+            "media": {
+              "requests": 0,
+              "bytes": 0
+            },
+            "third-party": {
+              "requests": 0,
+              "bytes": 0
+            }
+          },
+          "lcpElement": null
+        }
+      }
+    },
+    {
+      "case": "home",
+      "path": "/",
+      "formFactor": "desktop",
+      "runs": 2,
+      "sites": {
+        "vercel": {
+          "performance": 58,
+          "ttfb": 91,
+          "fcp": 430.46500000000003,
+          "lcp": 1472.2150000000001,
+          "tbt": 20002.5,
+          "cls": 0,
+          "speedIndex": 3044.71,
+          "interactive": 43726.065,
+          "totalBytes": 397305.5,
+          "requests": 32,
+          "resources": {
+            "total": {
+              "requests": 31,
+              "bytes": 392036.5
+            },
+            "script": {
+              "requests": 16,
+              "bytes": 248733.5
+            },
+            "font": {
+              "requests": 2,
+              "bytes": 61099.5
+            },
+            "image": {
+              "requests": 9,
+              "bytes": 31964
+            },
+            "document": {
+              "requests": 1,
+              "bytes": 25781.5
+            },
+            "other": {
+              "requests": 2,
+              "bytes": 12585
+            },
+            "stylesheet": {
+              "requests": 1,
+              "bytes": 11873
+            },
+            "media": {
+              "requests": 0,
+              "bytes": 0
+            },
+            "third-party": {
+              "requests": 0,
+              "bytes": 0
+            }
+          },
+          "lcpElement": null
+        },
+        "cloudflare": {
+          "performance": 49.5,
+          "ttfb": 335.5,
+          "fcp": 584.25,
+          "lcp": 2306.675,
+          "tbt": 19808.5,
+          "cls": 0,
+          "speedIndex": 3855.4750000000004,
+          "interactive": 43661.435,
+          "totalBytes": 2125916,
+          "requests": 49.5,
+          "resources": {
+            "total": {
+              "requests": 48.5,
+              "bytes": 2120077.5
+            },
+            "image": {
+              "requests": 8,
+              "bytes": 1672041
+            },
+            "script": {
+              "requests": 26,
+              "bytes": 306991
+            },
+            "font": {
+              "requests": 2.5,
+              "bytes": 82168
+            },
+            "document": {
+              "requests": 1,
+              "bytes": 27828
+            },
+            "other": {
+              "requests": 10,
+              "bytes": 19595.5
+            },
+            "stylesheet": {
+              "requests": 1,
+              "bytes": 11454
+            },
+            "media": {
+              "requests": 0,
+              "bytes": 0
+            },
+            "third-party": {
+              "requests": 0,
+              "bytes": 0
+            }
+          },
+          "lcpElement": null
+        }
+      }
+    },
+    {
+      "case": "blog-post",
+      "path": "/blog/php2shell-colombia-2026",
+      "formFactor": "mobile",
+      "runs": 2,
+      "sites": {
+        "vercel": {
+          "performance": 96,
+          "ttfb": 87,
+          "fcp": 1211.1100000000001,
+          "lcp": 2277.11,
+          "tbt": 146.75,
+          "cls": 0,
+          "speedIndex": 1979.2600000000002,
+          "interactive": 2805.885,
+          "totalBytes": 456638.5,
+          "requests": 25,
+          "resources": {
+            "total": {
+              "requests": 24,
+              "bytes": 451393.5
+            },
+            "script": {
+              "requests": 17,
+              "bytes": 343557
+            },
+            "font": {
+              "requests": 2,
+              "bytes": 61113
+            },
+            "document": {
+              "requests": 1,
+              "bytes": 15840
+            },
+            "other": {
+              "requests": 1,
+              "bytes": 15144.5
+            },
+            "stylesheet": {
+              "requests": 2,
+              "bytes": 12694
+            },
+            "image": {
+              "requests": 1,
+              "bytes": 3045
+            },
+            "media": {
+              "requests": 0,
+              "bytes": 0
+            },
+            "third-party": {
+              "requests": 0,
+              "bytes": 0
+            }
+          },
+          "lcpElement": null
+        },
+        "cloudflare": {
+          "performance": 92.5,
+          "ttfb": 180.5,
+          "fcp": 1741.59,
+          "lcp": 3080.09,
+          "tbt": 79,
+          "cls": 0,
+          "speedIndex": 2835.965,
+          "interactive": 3080.09,
+          "totalBytes": 566978,
+          "requests": 38,
+          "resources": {
+            "total": {
+              "requests": 37,
+              "bytes": 561143.5
+            },
+            "script": {
+              "requests": 28,
+              "bytes": 406307.5
+            },
+            "font": {
+              "requests": 3,
+              "bytes": 102238
+            },
+            "document": {
+              "requests": 1,
+              "bytes": 18937.5
+            },
+            "other": {
+              "requests": 2,
+              "bytes": 18019
+            },
+            "stylesheet": {
+              "requests": 2,
+              "bytes": 12080
+            },
+            "image": {
+              "requests": 1,
+              "bytes": 3561.5
+            },
+            "media": {
+              "requests": 0,
+              "bytes": 0
+            },
+            "third-party": {
+              "requests": 0,
+              "bytes": 0
+            }
+          },
+          "lcpElement": null
+        }
+      }
+    },
+    {
+      "case": "visor",
+      "path": "/visor-credito",
+      "formFactor": "mobile",
+      "runs": 2,
+      "sites": {
+        "vercel": {
+          "performance": 91,
+          "ttfb": 88,
+          "fcp": 1257.5500000000002,
+          "lcp": 3434.05,
+          "tbt": 45,
+          "cls": 0,
+          "speedIndex": 2492,
+          "interactive": 3434.05,
+          "totalBytes": 482055,
+          "requests": 26,
+          "resources": {
+            "total": {
+              "requests": 25,
+              "bytes": 476786.5
+            },
+            "script": {
+              "requests": 17,
+              "bytes": 328555
+            },
+            "font": {
+              "requests": 3,
+              "bytes": 101804
+            },
+            "document": {
+              "requests": 1,
+              "bytes": 15479.5
+            },
+            "other": {
+              "requests": 1,
+              "bytes": 15157
+            },
+            "stylesheet": {
+              "requests": 2,
+              "bytes": 12749
+            },
+            "image": {
+              "requests": 1,
+              "bytes": 3042
+            },
+            "media": {
+              "requests": 0,
+              "bytes": 0
+            },
+            "third-party": {
+              "requests": 0,
+              "bytes": 0
+            }
+          },
+          "lcpElement": null
+        },
+        "cloudflare": {
+          "performance": 83.5,
+          "ttfb": 115.5,
+          "fcp": 2391.4,
+          "lcp": 4153.24,
+          "tbt": 0,
+          "cls": 0,
+          "speedIndex": 2786.47,
+          "interactive": 4153.24,
+          "totalBytes": 534887.5,
+          "requests": 36,
+          "resources": {
+            "total": {
+              "requests": 35,
+              "bytes": 529055.5
+            },
+            "script": {
+              "requests": 27,
+              "bytes": 375072.5
+            },
+            "font": {
+              "requests": 3,
+              "bytes": 102656.5
+            },
+            "document": {
+              "requests": 1,
+              "bytes": 18347
+            },
+            "other": {
+              "requests": 2,
+              "bytes": 17968.5
+            },
+            "stylesheet": {
+              "requests": 1,
+              "bytes": 11449.5
+            },
+            "image": {
+              "requests": 1,
+              "bytes": 3561.5
+            },
+            "media": {
+              "requests": 0,
+              "bytes": 0
+            },
+            "third-party": {
+              "requests": 0,
+              "bytes": 0
+            }
+          },
+          "lcpElement": null
+        }
+      }
+    }
+  ]
+}
