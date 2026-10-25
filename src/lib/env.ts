@@ -16,6 +16,7 @@ const envSchema = z.object({
   // sesión posible. El contenido vive en R2, no en GitHub.
   ADMIN_PASSWORD: z.string().min(1).optional(),
   ADMIN_SECRET: z.string().min(16).optional(),
+  TURNSTILE_SECRET_KEY: z.string().min(1).optional(),
 
   // Client-side variables (with defaults for production)
   NEXT_PUBLIC_SITE_URL: z.string().url().default('https://www.wsalas.com'),
@@ -30,6 +31,7 @@ export const env = parsedEnv.success ? parsedEnv.data : {
   TWTAPI_KEY: undefined,
   ADMIN_PASSWORD: undefined,
   ADMIN_SECRET: undefined,
+  TURNSTILE_SECRET_KEY: undefined,
   NEXT_PUBLIC_SITE_URL: 'https://www.wsalas.com'
 };
 

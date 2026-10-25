@@ -55,10 +55,10 @@ author: "William Salas"
 `;
 }
 
-// Los borradores viven en el navegador y no en git: cada guardado es un commit y
-// un rebuild, así que autoguardar al repositorio convertiría una frase en cinco
-// deploys. `ponytail:` localStorage, sin servidor; si algún día se edita desde
-// dos equipos, el borrador deja de alcanzar.
+// Los borradores viven en el navegador y no en R2: guardar publica el cambio al
+// instante, pero autoguardar cada frase no aporta nada. `ponytail:` localStorage,
+// sin servidor; si algún día se edita desde dos equipos, el borrador deja de
+// alcanzar.
 const draftKey = (path: string) => `admin-draft:${path}`;
 
 function readDraft(path: string, serverRaw: string): { raw: string; at: number } | null {
@@ -219,7 +219,11 @@ export default function AdminPanel() {
 			dropDraft(doc.path);
 			draftRef.current = null;
 			setDraftAt(null);
-			toast({ title: "Saved", description: "The site rebuilds in about a minute." });
+			toast({
+				title: "Saved",
+				description: "Changes are live on the site.",
+				variant: "success",
+			});
 		} catch (error) {
 			if (error instanceof ApiError && error.status === 409) {
 				toast({
@@ -245,7 +249,11 @@ export default function AdminPanel() {
 			setRaw("");
 			setDraftAt(null);
 			await loadFiles();
-			toast({ title: "Post deleted", description: "It leaves the site on the next rebuild." });
+			toast({
+				title: "Post deleted",
+				description: "Removed from the site.",
+				variant: "success",
+			});
 		} catch (error) {
 			fail(error, "Could not delete the post");
 		} finally {
@@ -264,7 +272,11 @@ export default function AdminPanel() {
 			setNewSlug("");
 			await loadFiles();
 			await open(data.path as string);
-			toast({ title: "Post created" });
+			toast({
+				title: "Post created",
+				description: "You can start editing it.",
+				variant: "success",
+			});
 		} catch (error) {
 			fail(error, "Could not create the post");
 		} finally {
@@ -273,7 +285,11 @@ export default function AdminPanel() {
 	}
 
 	function uploaded(src: string) {
-		toast({ title: "Image uploaded", description: "It shows on the site after the rebuild." });
+		toast({
+			title: "Image uploaded",
+			description: "Inserted into the post.",
+			variant: "success",
+		});
 		setDoc((current) => (current ? { ...current, images: [...new Set([...current.images, src])] } : current));
 	}
 
@@ -301,7 +317,7 @@ export default function AdminPanel() {
 					/>
 					<Button
 						type="submit"
-						variant="pink"
+						variant="green"
 						className="mt-4 w-full"
 						disabled={busy || !password}
 					>
@@ -328,14 +344,16 @@ export default function AdminPanel() {
 							{doc ? doc.path : "no file open"}
 						</span>
 					</div>
-					<button
+					<Button
 						type="button"
 						onClick={logout}
-						className="flex shrink-0 items-center gap-1.5 rounded-md border border-white/15 px-3 py-1.5 text-xs text-gray-300 transition-colors hover:border-palette-pink/50 hover:text-white"
+						variant="outline"
+						size="sm"
+						className="shrink-0 gap-1.5 text-xs"
 					>
 						<LogOut className="h-3.5 w-3.5" />
 						Sign out
-					</button>
+					</Button>
 				</div>
 			</header>
 
@@ -393,6 +411,7 @@ export default function AdminPanel() {
 							disabled={busy || !newSlug}
 							onClick={create}
 							title="New post"
+							aria-label="New post"
 						>
 							<Plus className="h-4 w-4" />
 						</Button>

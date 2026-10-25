@@ -128,15 +128,36 @@ Single source: `src/components/ui/button.tsx` (cva). Variants:
 
 | Variant | Look | Canonical use |
 | --- | --- | --- |
-| `green` | lime bg, `gray-900` text, olive hover, `hover:scale-105` | **primary** CTA ("Book a call", "Download CV", submit) |
+| `green` | lime bg, `gray-900` text, olive hover, `hover:scale-105` | **primary** CTA ("Book a call", "Download CV", submit, admin Save/Sign in/New post) |
 | `glass` | `.glass`, white text, brighter on hover | **secondary** CTA ("Email me") |
-| `outline` | `border-foreground/20`, bg background/50 | tertiary (Experience show more) |
-| `ghost` | transparent, accent on hover | low-emphasis |
+| `outline` | `border-foreground/20`, bg background/50 | secondary controls (Experience show more, admin Sign out/History) |
+| `ghost` | transparent, accent on hover | low-emphasis (admin Cancel, mode toggles, icon-only delete) |
+| `destructive` | red bg, white text | destructive confirmation ("Yes, delete") |
 | `link` | white, underlined with pink decoration | inline links (company link in `ExperienceCard`) |
-| `pink` | pink bg, `gray-900` text | destructive/alt (admin save) |
+| `pink` | pink bg, `gray-900` text | material/alt accent, **not** for primary or destructive actions |
 
 Sizes: `sm` (h-9), `default` (h-10), `lg` (h-11), `icon` (h-10 w-10). Base radius
 is `rounded-md`.
+
+> **Decision (admin hierarchy):** one green primary per view — Sign in, Save, or
+> New post. Everything else is `outline` (Sign out, History), `ghost` (Cancel,
+> mode toggles, delete icon), or `destructive` only on the confirm step. No
+> hand-rolled button surfaces on `/admin`.
+
+### Toasts
+
+Toasts are a raised panel, not a coloured banner: `bg-palette-card/95` with a
+1px `white/10` border and backdrop blur, so they sit on the same layer as cards.
+
+| Variant | Meaning | Accent |
+| --- | --- | --- |
+| `default` | neutral notice | none |
+| `success` | the write reached R2 and is already live | 3px lime left rule |
+| `destructive` | request failed | 3px red left rule |
+
+Descriptions are `text-gray-300`. Admin copy says **saved / live / inserted**,
+never "the site rebuilds" — admin writes go straight to R2 and are served on the
+next request, with no redeploy.
 
 > **Decision:** the lime button is `variant="green"` and nothing else. Three places
 > re-implement it by hand and must be migrated: `NavBar.tsx:171`,

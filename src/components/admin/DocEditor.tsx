@@ -221,49 +221,51 @@ export function DocEditor({
 
 				<div className="flex items-center gap-2">
 					{historyUrl && (
-						<a
-							href={historyUrl}
-							target="_blank"
-							rel="noopener noreferrer"
-							className="flex items-center gap-1.5 rounded-md border border-white/15 px-3 py-1.5 text-xs text-gray-300 transition-colors hover:border-white/30 hover:text-white"
-						>
-							History
-							<ExternalLink className="h-3 w-3" />
-						</a>
+						<Button asChild variant="outline" size="sm" className="gap-1.5 text-xs">
+							<a href={historyUrl} target="_blank" rel="noopener noreferrer">
+								History
+								<ExternalLink className="h-3 w-3" />
+							</a>
+						</Button>
 					)}
 
 					{confirmingDelete ? (
 						<span className="flex items-center gap-1 text-xs">
-							<button
+							<Button
 								type="button"
+								variant="destructive"
+								size="sm"
 								onClick={() => {
 									setConfirmingDelete(false);
 									onDelete();
 								}}
-								className="rounded-md border border-red-500/40 bg-red-500/10 px-2.5 py-1.5 text-red-300 transition-colors hover:bg-red-500/20"
 							>
 								Yes, delete
-							</button>
-							<button
+							</Button>
+							<Button
 								type="button"
+								variant="ghost"
+								size="sm"
 								onClick={() => setConfirmingDelete(false)}
-								className="rounded-md px-2 py-1.5 text-gray-400 transition-colors hover:text-white"
 							>
 								Cancel
-							</button>
+							</Button>
 						</span>
 					) : (
-						<button
+						<Button
 							type="button"
+							variant="ghost"
+							size="icon"
 							onClick={() => setConfirmingDelete(true)}
 							title={`Delete ${slug}.md`}
-							className="rounded-md border border-white/15 p-2 text-gray-400 transition-colors hover:border-red-500/40 hover:text-red-300"
+							aria-label={`Delete ${slug}.md`}
+							className="h-9 w-9 text-gray-400 hover:bg-red-500/10 hover:text-red-300"
 						>
 							<Trash2 className="h-3.5 w-3.5" />
-						</button>
+						</Button>
 					)}
-					<Button variant="pink" size="sm" onClick={onSave} disabled={saving || !dirty}>
-						<Save className="mr-1	 h-3 w-3" />
+					<Button variant="green" size="sm" onClick={onSave} disabled={saving || !dirty}>
+						<Save className="mr-1 h-3 w-3" />
 						Save
 					</Button>
 				</div>
@@ -291,7 +293,7 @@ export function DocEditor({
 					))}
 				</div>
 
-				<label className="flex cursor-pointer items-center gap-2 rounded-md border border-white/15 px-3 py-1.5 text-xs text-gray-300 transition-colors hover:border-palette-pink/50 hover:text-white">
+				<label className="glass-subtle flex cursor-pointer items-center gap-2 rounded-md px-3 py-1.5 text-xs text-gray-300 transition-colors hover:border-palette-lime/40 hover:text-white">
 					<input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={pickFile} />
 					<ImagePlus className="h-3.5 w-3.5" />
 					{uploading ? "Uploading…" : "Upload image"}
@@ -299,14 +301,14 @@ export function DocEditor({
 			</div>
 
 			{draftAt !== null && (
-				<div className="mx-4 mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-palette-pink/30 bg-palette-pink/10 px-3 py-2 text-xs text-gray-200 sm:mx-6">
+				<div className="mx-4 mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-gray-300 sm:mx-6">
 					<span>
 						An unsaved draft from {new Date(draftAt).toLocaleTimeString("en-US", TIME)}.
 					</span>
 					<button
 						type="button"
 						onClick={onRestoreDraft}
-						className="flex items-center gap-1 font-medium text-palette-pink hover:underline"
+						className="flex items-center gap-1 font-medium text-palette-lime hover:underline"
 					>
 						<RotateCcw className="h-3 w-3" />
 						Restore

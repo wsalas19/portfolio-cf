@@ -28,6 +28,8 @@ const emailSchema = z.object({
     errorMap: () => ({ message: "Personal data authorization is required" }),
   }),
   policyVersion: z.string().min(1).max(32),
+  // Turnstile resuelve el reto en el navegador; el token es de un solo uso.
+  turnstileToken: z.string().min(1).max(4096),
 });
 
 // Una sola lista para los dos handlers. Antes cada uno tenía la suya y habían
@@ -114,6 +116,53 @@ export async function POST(request: Request) {
     }
 
     const data = validatedData.data;
+
+    // Turnstile: se valida en el servidor antes de gastar una llamada a Resend.
+    // En desarrollo, si no hay secreto configurado, se usa la clave de prueba
+    // oficial que siempre aprueba.
+    const turnstileSecret =
+      env.TURNSTILE_SECRET_KEY ||
+      (process.env.NODE_ENV !== "production"
+        ? "1x0000000000000000000000000000000AA"
+        : undefined);
+
+    if (!turnstileSecret) {
+      Logger.error(new Error("Missing TURNSTILE_SECRET_KEY"), { ip });
+      return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
+    }
+
+    const turnstileBody = new URLSearchParams({
+      secret: turnstileSecret,
+      response: data.turnstileToken,
+    });
+    // `remoteip` es opcional: solo se manda cuando hay una IP real. Cloudflare
+    // la expone siempre, pero en local el fallback es "unknown" y no sirve.
+    if (ip !== "unknown") turnstileBody.set("remoteip", ip);
+
+    const turnstileResponse = await fetch(
+      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: turnstileBody,
+      },
+    );
+    const turnstile = (await turnstileResponse.json()) as {
+      success?: boolean;
+      action?: string;
+      "error-codes"?: string[];
+    };
+
+    if (
+      !turnstile.success ||
+      (turnstile.action && turnstile.action !== "contact")
+    ) {
+      Logger.security("TURNSTILE_FAILED", {
+        ip,
+        errors: turnstile["error-codes"] ?? [],
+      });
+      return NextResponse.json({ error: "Verification failed" }, { status: 403 });
+    }
 
     // Validate environment variables using env utility
     if (!env.RESEND_API_KEY || !env.RESEND_FROM_EMAIL || !env.RESEND_TO_EMAIL) {

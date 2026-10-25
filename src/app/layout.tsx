@@ -7,7 +7,7 @@ import ScrollButton from "@/components/ScrollButton";
 import { Toaster } from "@/components/ui/toaster";
 import { Carme, Inter } from "next/font/google";
 import { env } from "@/lib/env";
-import { PROFILE, SOCIAL_LINKS } from "@/lib/constants";
+import { PROFILE, SOCIAL_LINKS, CF_WEB_ANALYTICS_TOKEN } from "@/lib/constants";
 import { getLandingContent } from "@/lib/i18n";
 
 // metadataBase hace absolutas las `alternates.canonical` relativas de cada ruta.
@@ -152,6 +152,11 @@ export default function RootLayout({
 				<script
 					type="application/ld+json"
 					dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+				/>
+				<script
+					type="module"
+					src="https://static.cloudflareinsights.com/beacon.min.js"
+					data-cf-beacon={JSON.stringify({ token: CF_WEB_ANALYTICS_TOKEN })}
 				/>
 			</head>
 			<body className="font-sans">

@@ -2,6 +2,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Mail, MessageSquare, Send } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { CONTACT_EMAIL } from "@/lib/constants";
@@ -11,6 +12,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { useToast } from "./ui/use-toast";
+import { Turnstile } from "./Turnstile";
 
 import type { LandingCopy } from "@/lib/i18n";
 
@@ -31,6 +33,8 @@ function buildFormSchema(copy: LandingCopy) {
 
 function ContactForm({ copy }: { copy: LandingCopy }) {
 	const { toast } = useToast();
+	const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+	const [turnstileKey, setTurnstileKey] = useState(0);
 	const formSchema = buildFormSchema(copy);
 	const form = useForm<z.infer<ReturnType<typeof buildFormSchema>>>({
 		resolver: zodResolver(formSchema),
@@ -48,6 +52,15 @@ function ContactForm({ copy }: { copy: LandingCopy }) {
 	} = form;
 
 	async function onSubmit(values: z.infer<typeof formSchema>) {
+		if (!turnstileToken) {
+			toast({
+				title: copy.contact.errorTitle,
+				description: copy.contact.errorBody,
+				variant: "destructive",
+			});
+			return;
+		}
+
 		try {
 			const response = await fetch("/api/email", {
 				method: "POST",
@@ -56,6 +69,7 @@ function ContactForm({ copy }: { copy: LandingCopy }) {
 				},
 				body: JSON.stringify({
 					...values,
+					turnstileToken,
 					// Evidencia de la autorización: qué versión aceptó. El sello de
 					// tiempo lo pone el servidor, no el cliente.
 					policyVersion: POLITICA_VERSION,
@@ -67,6 +81,8 @@ function ContactForm({ copy }: { copy: LandingCopy }) {
 			}
 
 			form.reset();
+			setTurnstileToken(null);
+			setTurnstileKey((key) => key + 1);
 			toast({
 				title: copy.contact.thanks.replace("{name}", values.name),
 				description: copy.contact.thanksBody,
@@ -74,6 +90,8 @@ function ContactForm({ copy }: { copy: LandingCopy }) {
 				duration: 2500,
 			});
 		} catch (error) {
+			setTurnstileToken(null);
+			setTurnstileKey((key) => key + 1);
 			toast({
 				title: copy.contact.errorTitle,
 				description: copy.contact.errorBody,
@@ -274,13 +292,18 @@ function ContactForm({ copy }: { copy: LandingCopy }) {
 									)}
 								</div>
 
+								{/* Turnstile: verifica el envío antes de llegar al endpoint. */}
+								<div className="rise [--rise-delay:950ms]">
+									<Turnstile key={turnstileKey} onToken={setTurnstileToken} />
+								</div>
+
 								{/* Submit Button */}
 								<div className="rise [--rise-delay:1000ms]">
 									<Button
 										variant={"green"}
 										className="w-full text-[16px] glow-lime-hover"
 										type="submit"
-										disabled={isSubmitting}
+										disabled={isSubmitting || !turnstileToken}
 									>
 										{isSubmitting ? (
 											<>
