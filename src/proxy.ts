@@ -1,6 +1,17 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 export function proxy(request: NextRequest): NextResponse {
+	const host = request.headers.get("host") ?? "";
+
+	// `www` es el host canónico. El apex se queda con un 308 para no duplicar
+	// señales de SEO ni partir cookies entre dos hosts.
+	if (host === "wsalas.com") {
+		const url = new URL(request.url);
+		url.protocol = "https:";
+		url.host = "www.wsalas.com";
+		return NextResponse.redirect(url, 308);
+	}
+
 	const response = NextResponse.next();
 
 	// País del visitante para elegir la moneda del precio. Cloudflare pone
@@ -63,7 +74,6 @@ export function proxy(request: NextRequest): NextResponse {
 
 	// El deploy de staging vive en *.workers.dev. No debe competir con el sitio
 	// real en buscadores; el dominio definitivo no lleva este header.
-	const host = request.headers.get("host") ?? "";
 	if (host.endsWith(".workers.dev")) {
 		response.headers.set("X-Robots-Tag", "noindex, nofollow");
 	}
