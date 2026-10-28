@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Image } from "@unpic/react";
 import { X } from "lucide-react";
@@ -27,9 +27,16 @@ export function ZoomImage({
 	sizes = "(max-width: 640px) 100vw, 448px",
 }: ZoomImageProps) {
 	const dialogRef = useRef<HTMLDialogElement>(null);
-	const [mounted, setMounted] = useState(false);
+	const [open, setOpen] = useState(false);
 
-	useEffect(() => setMounted(true), []);
+	// Sin `mounted` ni portal desde el primer render: el diálogo solo existe
+	// después del clic, así que servidor y cliente pintan lo mismo y no hay
+	// desajuste de hidratación. El ref lo abre en el commit, que es el momento
+	// en que el elemento nativo ya está en el DOM.
+	const attachDialog = useCallback((dialog: HTMLDialogElement | null) => {
+		dialogRef.current = dialog;
+		if (dialog && !dialog.open) dialog.showModal();
+	}, []);
 
 	return (
 		<>
@@ -37,7 +44,7 @@ export function ZoomImage({
 			    lectura: w-full + h-auto respeta la relación de aspecto original. */}
 			<button
 				type="button"
-				onClick={() => dialogRef.current?.showModal()}
+				onClick={() => setOpen(true)}
 				aria-label={`Expand image: ${alt}`}
 				className={wrapperClassName}
 			>
@@ -52,13 +59,14 @@ export function ZoomImage({
 				/>
 			</button>
 
-			{mounted &&
+			{open &&
 				createPortal(
 					// open:* en vez de flex a secas: un display puesto a mano gana sobre
 					// el `dialog:not([open]){display:none}` del navegador, y el visor
 					// quedaría visible al final del artículo aunque esté cerrado.
 					<dialog
-						ref={dialogRef}
+						ref={attachDialog}
+						onClose={() => setOpen(false)}
 						onClick={(e) => {
 							// El click en el backdrop tiene como target el propio <dialog>.
 							if (e.target === dialogRef.current) dialogRef.current?.close();

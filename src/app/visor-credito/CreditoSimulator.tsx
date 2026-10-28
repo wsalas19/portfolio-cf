@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useReducer } from "react";
 import Link from "next/link";
 import { Banknote, Calculator, FileDown, Landmark } from "lucide-react";
 import {
+	BaseParams,
+	Comparativa,
 	DestinoAbono,
 	FilaPesos,
 	FilaUVR,
@@ -44,59 +46,127 @@ type Comp = {
 	sistema: SistemaAmortizacion;
 };
 
+type Tab = "UVR" | "Pesos";
+
+/** Resultado de una pestaña: la simulación visible y su comparativa de abonos. */
+type Sim<F> = {
+	result: Simulacion<F> | null;
+	comp: Comp | null;
+};
+
+type State = {
+	tab: Tab;
+	values: Record<Tab, Record<string, string>>;
+	sims: { UVR: Sim<FilaUVR>; Pesos: Sim<FilaPesos> };
+	error: string | null;
+};
+
+type Action =
+	| { type: "tab/changed"; tab: Tab }
+	| { type: "field/changed"; id: string; value: string }
+	| { type: "uvr/calculated"; result: Simulacion<FilaUVR>; comp: Comp }
+	| { type: "pesos/calculated"; result: Simulacion<FilaPesos>; comp: Comp }
+	| { type: "simulation/failed"; message: string };
+
+function emptySim<F>(): Sim<F> {
+	return { result: null, comp: null };
+}
+
+const INITIAL_STATE: State = {
+	tab: "UVR",
+	values: { UVR: UVR_DEFAULTS, Pesos: PESOS_DEFAULTS },
+	sims: { UVR: emptySim<FilaUVR>(), Pesos: emptySim<FilaPesos>() },
+	error: null,
+};
+
+/**
+ * Todo lo que la pantalla muestra a la vez vive en un solo estado. Calcular
+ * produce resultado + comparativa + error en una transición: antes eran tres
+ * `setState` y un render intermedio podía pintar la comparativa nueva con el
+ * resultado viejo. Cambiar de pestaña tampoco pierde la simulación de la otra.
+ */
+function reducer(state: State, action: Action): State {
+	switch (action.type) {
+		case "tab/changed":
+			return state.tab === action.tab && state.error === null
+				? state
+				: { ...state, tab: action.tab, error: null };
+		case "field/changed":
+			return {
+				...state,
+				values: {
+					...state.values,
+					[state.tab]: {
+						...state.values[state.tab],
+						[action.id]: action.value,
+					},
+				},
+			};
+		case "uvr/calculated":
+			return {
+				...state,
+				sims: { ...state.sims, UVR: { result: action.result, comp: action.comp } },
+				error: null,
+			};
+		case "pesos/calculated":
+			return {
+				...state,
+				sims: { ...state.sims, Pesos: { result: action.result, comp: action.comp } },
+				error: null,
+			};
+		case "simulation/failed":
+			return { ...state, error: action.message };
+	}
+}
+
+/** Arma el resultado visible y la comparativa a partir de una corrida completa. */
+function simulated<P extends BaseParams, F>(
+	params: P,
+	c: Comparativa<F>,
+): { result: Simulacion<F>; comp: Comp } {
+	return {
+		result: params.destinoAbono === "cuota" ? c.cuota : c.plazo,
+		comp: {
+			resumenes: {
+				sinAbono: c.sinAbono.resumen,
+				plazo: c.plazo.resumen,
+				cuota: c.cuota.resumen,
+			},
+			aporte: params.aporteExtra,
+			destino: params.destinoAbono ?? "plazo",
+			tipo: params.tipoAporte ?? "unico",
+			mesAbono: params.mesAbono ?? 1,
+			sistema: params.sistema,
+		},
+	};
+}
+
 export default function CreditoSimulator() {
-	const [tab, setTab] = useState<"UVR" | "Pesos">("UVR");
-	const [uvrValues, setUvrValues] = useState(UVR_DEFAULTS);
-	const [pesosValues, setPesosValues] = useState(PESOS_DEFAULTS);
-	const [uvrResult, setUvrResult] = useState<Simulacion<FilaUVR> | null>(null);
-	const [pesosResult, setPesosResult] = useState<Simulacion<FilaPesos> | null>(null);
-	const [uvrComp, setUvrComp] = useState<Comp | null>(null);
-	const [pesosComp, setPesosComp] = useState<Comp | null>(null);
-	const [error, setError] = useState<string | null>(null);
+	const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
+	const { tab } = state;
 
 	const calcular = () => {
-		setError(null);
 		try {
-			if (tab === "UVR") {
-				const params = uvrParamsFrom(uvrValues);
-				const c = compararUVR(params);
-				setUvrResult(params.destinoAbono === "cuota" ? c.cuota : c.plazo);
-				setUvrComp({
-					resumenes: {
-						sinAbono: c.sinAbono.resumen,
-						plazo: c.plazo.resumen,
-						cuota: c.cuota.resumen,
-					},
-					aporte: params.aporteExtra,
-					destino: params.destinoAbono ?? "plazo",
-					tipo: params.tipoAporte ?? "unico",
-					mesAbono: params.mesAbono ?? 1,
-					sistema: params.sistema,
-				});
+			if (state.tab === "UVR") {
+				const params = uvrParamsFrom(state.values.UVR);
+				const { result, comp } = simulated(params, compararUVR(params));
+				dispatch({ type: "uvr/calculated", result, comp });
 			} else {
-				const params = pesosParamsFrom(pesosValues);
-				const c = compararPesos(params);
-				setPesosResult(params.destinoAbono === "cuota" ? c.cuota : c.plazo);
-				setPesosComp({
-					resumenes: {
-						sinAbono: c.sinAbono.resumen,
-						plazo: c.plazo.resumen,
-						cuota: c.cuota.resumen,
-					},
-					aporte: params.aporteExtra,
-					destino: params.destinoAbono ?? "plazo",
-					tipo: params.tipoAporte ?? "unico",
-					mesAbono: params.mesAbono ?? 1,
-					sistema: params.sistema,
-				});
+				const params = pesosParamsFrom(state.values.Pesos);
+				const { result, comp } = simulated(params, compararPesos(params));
+				dispatch({ type: "pesos/calculated", result, comp });
 			}
 		} catch (e) {
-			setError(e instanceof Error ? e.message : "Error inesperado");
+			dispatch({
+				type: "simulation/failed",
+				message: e instanceof Error ? e.message : "Error inesperado",
+			});
 		}
 	};
 
-	const r = tab === "UVR" ? uvrResult : pesosResult;
-	const comp = tab === "UVR" ? uvrComp : pesosComp;
+	const active = state.sims[state.tab];
+	const r = active.result;
+	const comp = active.comp;
 	const fin = r
 		? `Mes ${r.resumen.finCreditoMes} (${Math.floor(r.resumen.finCreditoMes / 12)}a ${r.resumen.finCreditoMes % 12}m)`
 		: "";
@@ -122,10 +192,7 @@ export default function CreditoSimulator() {
 							{(["UVR", "Pesos"] as const).map((t) => (
 								<button
 									key={t}
-									onClick={() => {
-										setTab(t);
-										setError(null);
-									}}
+									onClick={() => dispatch({ type: "tab/changed", tab: t })}
 									className={`flex items-center gap-1.5 border-b-2 pb-2 text-sm font-medium transition-colors ${
 										tab === t
 											? "border-palette-lime text-white"
@@ -145,12 +212,9 @@ export default function CreditoSimulator() {
 						<div className="lg:flex-1">
 							<FormFields
 								fields={tab === "UVR" ? UVR_FIELDS : PESOS_FIELDS}
-								values={tab === "UVR" ? uvrValues : pesosValues}
-								onChangeAction={(id, v) =>
-									(tab === "UVR" ? setUvrValues : setPesosValues)((prev) => ({
-										...prev,
-										[id]: v,
-									}))
+								values={state.values[tab]}
+								onChangeAction={(id, value) =>
+									dispatch({ type: "field/changed", id, value })
 								}
 							/>
 						</div>
@@ -167,8 +231,10 @@ export default function CreditoSimulator() {
 							{r && (
 								<button
 									onClick={() => {
-										if (tab === "UVR" && uvrResult) descargarUVR(uvrResult);
-										else if (pesosResult) descargarPesos(pesosResult);
+										if (tab === "UVR" && state.sims.UVR.result)
+											descargarUVR(state.sims.UVR.result);
+										else if (state.sims.Pesos.result)
+											descargarPesos(state.sims.Pesos.result);
 									}}
 									className="flex items-center justify-center gap-2 rounded-md border border-white/15 px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:border-white/40"
 								>
@@ -178,9 +244,9 @@ export default function CreditoSimulator() {
 							)}
 						</div>
 
-						{error && (
+						{state.error && (
 							<p className="mt-4 rounded-md border border-palette-pink/40 bg-palette-pink/10 px-4 py-3 text-sm text-palette-pink">
-								{error}
+								{state.error}
 							</p>
 						)}
 					</aside>
@@ -198,8 +264,8 @@ export default function CreditoSimulator() {
 										label="Monto a Financiar"
 										value={fmt(r.resumen.montoCOP)}
 										sub={
-											tab === "UVR" && uvrResult
-												? `${cop.format(Math.round(uvrResult.resumen.montoUVR ?? 0))} UVR`
+											tab === "UVR" && state.sims.UVR.result
+												? `${cop.format(Math.round(state.sims.UVR.result.resumen.montoUVR ?? 0))} UVR`
 												: undefined
 										}
 										accent="border-l-palette-pink"
@@ -278,11 +344,11 @@ export default function CreditoSimulator() {
 						</p>
 					</div>
 					<div className="h-[440px]">
-						{tab === "UVR" && uvrResult ? (
-							<Resultados filas={uvrResult.filas} cols={COLS_UVR} />
+						{tab === "UVR" && state.sims.UVR.result ? (
+							<Resultados filas={state.sims.UVR.result.filas} cols={COLS_UVR} />
 						) : (
-							pesosResult && (
-								<Resultados filas={pesosResult.filas} cols={COLS_PESOS} />
+							state.sims.Pesos.result && (
+								<Resultados filas={state.sims.Pesos.result.filas} cols={COLS_PESOS} />
 							)
 						)}
 					</div>

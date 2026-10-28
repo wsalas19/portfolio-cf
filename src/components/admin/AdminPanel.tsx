@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer } from "react";
 import { DocEditor } from "@/components/admin/DocEditor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,9 @@ type Doc = {
 	historyUrl?: string;
 	images: string[];
 };
+
+/** Borrador local: el texto sin guardar y el momento en que se escribió. */
+type Draft = { raw: string; at: number };
 
 const GROUPS: { kind: Kind; label: string; icon: typeof FileText }[] = [
 	{ kind: "blog", label: "Blog", icon: FileText },
@@ -61,7 +64,7 @@ author: "William Salas"
 // alcanzar.
 const draftKey = (path: string) => `admin-draft:${path}`;
 
-function readDraft(path: string, serverRaw: string): { raw: string; at: number } | null {
+function readDraft(path: string, serverRaw: string): Draft | null {
 	try {
 		const stored = localStorage.getItem(draftKey(path));
 		if (!stored) return null;
@@ -85,19 +88,127 @@ function fileLabel(path: string): string {
 	return path.split("/").pop()?.replace(/\.md$/, "") ?? path;
 }
 
+/**
+ * Estado del panel en un solo objeto: sesión, archivo abierto, edición y
+ * borrador. Abrir un documento toca cinco piezas a la vez (doc, raw, savedAt,
+ * borrador y estado de guardado) y con `useState` separados cada una podía
+ * quedar a medio actualizar. Un dispatch = una transición.
+ */
+type AdminState = {
+	authed: boolean | null;
+	password: string;
+	files: FileEntry[];
+	doc: Doc | null;
+	raw: string;
+	savedAt: number | null;
+	newSlug: string;
+	busy: boolean;
+	saving: boolean;
+	draft: Draft | null;
+};
+
+type AdminAction =
+	| { type: "auth/checked"; authed: boolean }
+	| { type: "auth/password"; value: string }
+	| { type: "auth/signed-in" }
+	| { type: "auth/signed-out" }
+	| { type: "files/loaded"; files: FileEntry[] }
+	| { type: "doc/opened"; doc: Doc; raw: string; draft: Draft | null }
+	| { type: "doc/edited"; raw: string }
+	| { type: "doc/saved"; sha: string; raw: string; savedAt: number }
+	| { type: "doc/cleared" }
+	| { type: "draft/restored" }
+	| { type: "draft/discarded" }
+	| { type: "images/added"; src: string }
+	| { type: "slug/changed"; value: string }
+	| { type: "busy/changed"; value: boolean }
+	| { type: "saving/changed"; value: boolean };
+
+const INITIAL_STATE: AdminState = {
+	authed: null,
+	password: "",
+	files: [],
+	doc: null,
+	raw: "",
+	savedAt: null,
+	newSlug: "",
+	busy: false,
+	saving: false,
+	draft: null,
+};
+
+function reducer(state: AdminState, action: AdminAction): AdminState {
+	switch (action.type) {
+		case "auth/checked":
+			return { ...state, authed: action.authed };
+		case "auth/password":
+			return { ...state, password: action.value };
+		case "auth/signed-in":
+			return { ...state, authed: true, password: "" };
+		case "auth/signed-out":
+			// Cerrar sesión no debe dejar el documento ni el borrador del anterior a
+			// la vista del siguiente que entre en el equipo.
+			return {
+				...state,
+				authed: false,
+				password: "",
+				files: [],
+				doc: null,
+				raw: "",
+				savedAt: null,
+				draft: null,
+				saving: false,
+			};
+		case "files/loaded":
+			return { ...state, files: action.files };
+		case "doc/opened":
+			return {
+				...state,
+				doc: action.doc,
+				raw: action.raw,
+				savedAt: null,
+				draft: action.draft,
+			};
+		case "doc/edited":
+			return state.raw === action.raw ? state : { ...state, raw: action.raw };
+		case "doc/saved":
+			if (!state.doc) return state;
+			return {
+				...state,
+				// `savedRaw` es el texto que viajó, no el actual: si se siguió
+				// escribiendo durante el guardado, lo nuevo sigue contando como sucio.
+				doc: { ...state.doc, sha: action.sha, savedRaw: action.raw },
+				savedAt: action.savedAt,
+				draft: null,
+			};
+		case "doc/cleared":
+			return { ...state, doc: null, raw: "", savedAt: null, draft: null };
+		case "draft/restored":
+			return state.draft ? { ...state, raw: state.draft.raw, draft: null } : state;
+		case "draft/discarded":
+			return { ...state, draft: null };
+		case "images/added":
+			if (!state.doc) return state;
+			return {
+				...state,
+				doc: {
+					...state.doc,
+					images: [...new Set([...state.doc.images, action.src])],
+				},
+			};
+		case "slug/changed":
+			return { ...state, newSlug: action.value };
+		case "busy/changed":
+			return { ...state, busy: action.value };
+		case "saving/changed":
+			return { ...state, saving: action.value };
+	}
+}
+
 export default function AdminPanel() {
 	const { toast } = useToast();
-	const [authed, setAuthed] = useState<boolean | null>(null);
-	const [password, setPassword] = useState("");
-	const [files, setFiles] = useState<FileEntry[]>([]);
-	const [doc, setDoc] = useState<Doc | null>(null);
-	const [raw, setRaw] = useState("");
-	const [savedAt, setSavedAt] = useState<number | null>(null);
-	const [newSlug, setNewSlug] = useState("");
-	const [busy, setBusy] = useState(false);
-	const [saving, setSaving] = useState(false);
-	const draftRef = useRef<{ raw: string; at: number } | null>(null);
-	const [draftAt, setDraftAt] = useState<number | null>(null);
+	const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
+	const { authed, password, files, doc, raw, savedAt, newSlug, busy, saving, draft } = state;
 
 	const dirty = doc !== null && raw !== doc.savedRaw;
 
@@ -114,7 +225,7 @@ export default function AdminPanel() {
 	const loadFiles = useCallback(async () => {
 		try {
 			const data = await request("/api/admin/files");
-			setFiles((data.files as FileEntry[]) ?? []);
+			dispatch({ type: "files/loaded", files: (data.files as FileEntry[]) ?? [] });
 		} catch (error) {
 			fail(error, "Could not load the file list");
 		}
@@ -122,48 +233,63 @@ export default function AdminPanel() {
 
 	const open = useCallback(
 		async (next: string) => {
-			setBusy(true);
+			dispatch({ type: "busy/changed", value: true });
 			try {
 				const data = await request(`/api/admin/files?path=${encodeURIComponent(next)}`);
 				const savedRaw = data.raw as string;
-				setDoc({
-					path: next,
-					sha: data.sha as string,
-					savedRaw,
-					historyUrl: data.historyUrl as string | undefined,
-					images: (data.images as string[]) ?? [],
+				// Documento y borrador entran juntos: si llegara primero el doc, un
+				// render intermedio mostraría el texto del servidor sin avisar del
+				// borrador que existe en localStorage.
+				dispatch({
+					type: "doc/opened",
+					doc: {
+						path: next,
+						sha: data.sha as string,
+						savedRaw,
+						historyUrl: data.historyUrl as string | undefined,
+						images: (data.images as string[]) ?? [],
+					},
+					raw: savedRaw,
+					draft: readDraft(next, savedRaw),
 				});
-				setRaw(savedRaw);
-				setSavedAt(null);
-				const draft = readDraft(next, savedRaw);
-				draftRef.current = draft;
-				setDraftAt(draft?.at ?? null);
 			} catch (error) {
 				fail(error, "Could not open the file");
 			} finally {
-				setBusy(false);
+				dispatch({ type: "busy/changed", value: false });
 			}
 		},
 		[fail],
 	);
 
+	// Un solo arranque: averiguar si hay sesión y, si la hay, traer la lista.
+	// Antes eran dos efectos encadenados: uno escribía `authed` y el otro
+	// reaccionaba a ese cambio con otra petición.
 	useEffect(() => {
+		let alive = true;
 		request("/api/admin/auth")
-			.then((data) => setAuthed(Boolean(data.authenticated)))
-			.catch(() => setAuthed(false));
-	}, []);
-
-	useEffect(() => {
-		if (authed) void loadFiles();
-	}, [authed, loadFiles]);
+			.then((data) => {
+				if (!alive) return;
+				const authenticated = Boolean(data.authenticated);
+				dispatch({ type: "auth/checked", authed: authenticated });
+				if (authenticated) void loadFiles();
+			})
+			.catch(() => {
+				if (alive) dispatch({ type: "auth/checked", authed: false });
+			});
+		return () => {
+			alive = false;
+		};
+	}, [loadFiles]);
 
 	// Autoguardado del borrador, con retardo: escribir una palabra no debe ser
 	// diez escrituras a disco.
 	useEffect(() => {
 		if (!doc || raw === doc.savedRaw) return;
+		const path = doc.path;
+		const text = raw;
 		const timer = setTimeout(() => {
 			try {
-				localStorage.setItem(draftKey(doc.path), JSON.stringify({ raw, at: Date.now() }));
+				localStorage.setItem(draftKey(path), JSON.stringify({ raw: text, at: Date.now() }));
 			} catch {
 				// Sin cuota no hay borrador; el botón Guardar sigue ahí.
 			}
@@ -181,44 +307,46 @@ export default function AdminPanel() {
 
 	async function login(event: React.FormEvent) {
 		event.preventDefault();
-		setBusy(true);
+		dispatch({ type: "busy/changed", value: true });
 		try {
 			await request("/api/admin/auth", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ password }),
 			});
-			setPassword("");
-			setAuthed(true);
+			dispatch({ type: "auth/signed-in" });
+			void loadFiles();
 		} catch (error) {
 			fail(error, LOGIN_ERROR);
 		} finally {
-			setBusy(false);
+			dispatch({ type: "busy/changed", value: false });
 		}
 	}
 
 	async function logout() {
 		await request("/api/admin/auth", { method: "DELETE" }).catch(() => undefined);
-		setAuthed(false);
-		setFiles([]);
-		setDoc(null);
-		setRaw("");
+		dispatch({ type: "auth/signed-out" });
 	}
 
 	async function save() {
 		if (!doc) return;
-		setSaving(true);
+		// Foto del texto que viaja: `raw` puede cambiar mientras la petición está
+		// en vuelo y lo escrito después no debe marcarse como guardado.
+		const sent = raw;
+		dispatch({ type: "saving/changed", value: true });
 		try {
 			const data = await request("/api/admin/files", {
 				method: "PUT",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ path: doc.path, sha: doc.sha, raw }),
+				body: JSON.stringify({ path: doc.path, sha: doc.sha, raw: sent }),
 			});
-			setDoc({ ...doc, sha: data.sha as string, savedRaw: raw });
-			setSavedAt(Date.now());
+			dispatch({
+				type: "doc/saved",
+				sha: data.sha as string,
+				raw: sent,
+				savedAt: Date.now(),
+			});
 			dropDraft(doc.path);
-			draftRef.current = null;
-			setDraftAt(null);
 			toast({
 				title: "Saved",
 				description: "Changes are live on the site.",
@@ -235,19 +363,17 @@ export default function AdminPanel() {
 				fail(error, "Could not save");
 			}
 		} finally {
-			setSaving(false);
+			dispatch({ type: "saving/changed", value: false });
 		}
 	}
 
 	async function remove() {
 		if (!doc) return;
-		setBusy(true);
+		dispatch({ type: "busy/changed", value: true });
 		try {
 			await request(`/api/admin/files?path=${encodeURIComponent(doc.path)}`, { method: "DELETE" });
 			dropDraft(doc.path);
-			setDoc(null);
-			setRaw("");
-			setDraftAt(null);
+			dispatch({ type: "doc/cleared" });
 			await loadFiles();
 			toast({
 				title: "Post deleted",
@@ -257,19 +383,19 @@ export default function AdminPanel() {
 		} catch (error) {
 			fail(error, "Could not delete the post");
 		} finally {
-			setBusy(false);
+			dispatch({ type: "busy/changed", value: false });
 		}
 	}
 
 	async function create() {
-		setBusy(true);
+		dispatch({ type: "busy/changed", value: true });
 		try {
 			const data = await request("/api/admin/files", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ kind: "blog", slug: newSlug, raw: scaffold(newSlug) }),
 			});
-			setNewSlug("");
+			dispatch({ type: "slug/changed", value: "" });
 			await loadFiles();
 			await open(data.path as string);
 			toast({
@@ -280,7 +406,7 @@ export default function AdminPanel() {
 		} catch (error) {
 			fail(error, "Could not create the post");
 		} finally {
-			setBusy(false);
+			dispatch({ type: "busy/changed", value: false });
 		}
 	}
 
@@ -290,7 +416,7 @@ export default function AdminPanel() {
 			description: "Inserted into the post.",
 			variant: "success",
 		});
-		setDoc((current) => (current ? { ...current, images: [...new Set([...current.images, src])] } : current));
+		dispatch({ type: "images/added", src });
 	}
 
 	if (authed === null) {
@@ -311,7 +437,7 @@ export default function AdminPanel() {
 						type="password"
 						autoFocus
 						value={password}
-						onChange={(event) => setPassword(event.target.value)}
+						onChange={(event) => dispatch({ type: "auth/password", value: event.target.value })}
 						placeholder="Password"
 						aria-label="Password"
 					/>
@@ -399,7 +525,7 @@ export default function AdminPanel() {
 					<div className="mt-3 flex gap-2">
 						<Input
 							value={newSlug}
-							onChange={(event) => setNewSlug(event.target.value)}
+							onChange={(event) => dispatch({ type: "slug/changed", value: event.target.value })}
 							placeholder="new-post-slug"
 							aria-label="New post slug"
 							className="h-9 text-xs"
@@ -429,21 +555,16 @@ export default function AdminPanel() {
 							dirty={dirty}
 							saving={saving}
 							savedAt={savedAt}
-							draftAt={draftAt}
-							onChange={setRaw}
+							draftAt={draft?.at ?? null}
+							onChange={(value) => dispatch({ type: "doc/edited", raw: value })}
 							onSave={save}
 							onDelete={remove}
 							onUploaded={uploaded}
 							onError={(message) => toast({ title: message, variant: "destructive" })}
-							onRestoreDraft={() => {
-								if (!draftRef.current) return;
-								setRaw(draftRef.current.raw);
-								setDraftAt(null);
-							}}
+							onRestoreDraft={() => dispatch({ type: "draft/restored" })}
 							onDiscardDraft={() => {
 								if (doc) dropDraft(doc.path);
-								draftRef.current = null;
-								setDraftAt(null);
+								dispatch({ type: "draft/discarded" });
 							}}
 						/>
 					) : (

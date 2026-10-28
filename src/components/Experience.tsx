@@ -14,11 +14,13 @@ interface ExperienceProps {
 
 function Experience({ copy, jobs }: ExperienceProps) {
 	const [isExpanded, setIsExpanded] = useState(false);
-	const [activeIndex, setActiveIndex] = useState<number | null>(null);
+	// La primera tarjeta arranca activa. Antes un efecto hacía `setActiveIndex(0)`
+	// al montar y provocaba un render extra para pintar exactamente lo que el
+	// primer render ya puede pintar con este valor inicial.
+	const [activeIndex, setActiveIndex] = useState<number | null>(0);
 
 	// Auto-animate the first card after component mount
 	useEffect(() => {
-		setActiveIndex(0);
 		const timer = setTimeout(() => setActiveIndex(null), 1000);
 		return () => clearTimeout(timer);
 	}, []);

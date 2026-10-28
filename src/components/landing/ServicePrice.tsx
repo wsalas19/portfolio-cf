@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Calendar, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CALENDAR_URL, WHATSAPP_NUMBER } from "@/lib/constants";
@@ -55,6 +55,18 @@ interface ServicePriceProps {
 	copy: PriceCopy;
 }
 
+// El navegador no notifica cambios de cookie ni de zona horaria, así que no hay
+// nada a lo que suscribirse: el valor se lee una vez y no cambia en la sesión.
+const subscribeToNothing = () => () => {};
+
+function browserCurrency(): Currency {
+	return currencyForCountry(countryFromCookie() ?? countryFromTimezone());
+}
+
+function serverCurrency(): Currency {
+	return "USD";
+}
+
 function ServicePrice({
 	price,
 	title,
@@ -63,17 +75,15 @@ function ServicePrice({
 	cta,
 	copy,
 }: ServicePriceProps) {
-	// Se arranca en USD y no en la moneda detectada a propósito: el servidor
-	// renderiza USD, así que empezar en otra cosa rompe la hidratación. El
-	// cambio a pesos pasa después de montar (hay un parpadeo para el visitante
-	// colombiano; la alternativa era volver dinámica la home entera).
-	const [currency, setCurrency] = useState<Currency>("USD");
-
-	useEffect(() => {
-		setCurrency(
-			currencyForCountry(countryFromCookie() ?? countryFromTimezone()),
-		);
-	}, []);
+	// El servidor renderiza USD, así que ese es el snapshot de hidratación; ya
+	// montado, React compara con el del navegador y repinta si hay país. Antes
+	// esto era un `useEffect` que hacía `setCurrency`, es decir, un commit extra
+	// para leer un valor que nunca vuelve a cambiar.
+	const currency = useSyncExternalStore(
+		subscribeToNothing,
+		browserCurrency,
+		serverCurrency,
+	);
 
 	const priceLabel = formatPrice(amountFor(price, currency), currency);
 	const usesCalendar = cta === "calendar";

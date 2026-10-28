@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Project } from '@/lib/types/globals';
 import type { LandingCopy } from '@/lib/i18n';
@@ -20,12 +20,12 @@ export function ExpandableProjectCard({ project, index, labels }: ExpandableProj
 	const layoutId = `expandable-project-card-${index}`;
 
 	// `<dialog>` nativo y no un overlay `<div>`: da el focus trap y el cierre con
-	// Escape sin escribirlos a mano (mismo patrón que `ZoomImage`).
-	useEffect(() => {
-		const dialog = dialogRef.current;
-		if (!dialog) return;
-		if (isOpen && !dialog.open) dialog.showModal();
-	}, [isOpen]);
+	// Escape sin escribirlos a mano (mismo patrón que `ZoomImage`). Se abre en el
+	// clic: un efecto que reaccionara a `isOpen` repetía el trabajo del evento.
+	function openDialog() {
+		setIsOpen(true);
+		if (!dialogRef.current?.open) dialogRef.current?.showModal();
+	}
 
 	return (
 		<>
@@ -35,7 +35,7 @@ export function ExpandableProjectCard({ project, index, labels }: ExpandableProj
 			<motion.button
 				type="button"
 				layoutId={layoutId}
-				onClick={() => setIsOpen(true)}
+				onClick={openDialog}
 				className="focus-ring group grid w-full cursor-pointer grid-cols-[72px_1fr] items-center gap-x-4 gap-y-3 border-b border-white/10 py-5 text-left transition-colors hover:bg-white/[0.04] md:grid-cols-[88px_1fr_auto_24px] md:gap-6"
 			>
 				<motion.div
