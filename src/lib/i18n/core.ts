@@ -29,12 +29,13 @@ const CORE: Record<Locale, CoreCopy> = {
 		},
 		footer: {
 			about:
-				"Full-stack product development and technical review, for teams that need it shipped.",
+				"Full-stack product development and technical review for production web applications.",
 			onThisPage: "On this page",
 			more: "More",
 			elsewhere: "Elsewhere",
 			rights: "All rights reserved.",
 			builtWith: "Built with Next.js and Tailwind CSS.",
+			deployedOn: "Deployed on Cloudflare",
 		},
 		chrome: {
 			menuOpen: "Open menu",
@@ -58,12 +59,13 @@ const CORE: Record<Locale, CoreCopy> = {
 		},
 		footer: {
 			about:
-				"Desarrollo de producto full-stack y revisión técnica, para equipos que necesitan que esto salga.",
+				"Desarrollo de producto full-stack y revisión técnica para aplicaciones web en producción.",
 			onThisPage: "En esta página",
 			more: "Más",
 			elsewhere: "En otros sitios",
 			rights: "Todos los derechos reservados.",
 			builtWith: "Construido con Next.js y Tailwind CSS.",
+			deployedOn: "Desplegado en Cloudflare",
 		},
 		chrome: {
 			menuOpen: "Abrir menú",
