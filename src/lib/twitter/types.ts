@@ -9,6 +9,20 @@ export interface ThreadImage {
   alt: string;
 }
 
+/**
+ * Tarjeta de enlace que X muestra bajo un tweet. Sale de
+ * `tweet_card.legacy.binding_values`; el `url` es el destino ya expandido, que
+ * es también la clave con la que el markdown la referencia.
+ */
+export interface ThreadLinkPreview {
+  url: string;
+  title: string;
+  description?: string;
+  domain?: string;
+  imageUrl?: string;
+  imageAlt?: string;
+}
+
 export interface UnrolledThread {
   id: string;
   tweetId: string;
@@ -17,6 +31,7 @@ export interface UnrolledThread {
   author: ThreadAuthor;
   markdownContent: string;
   images?: ThreadImage[];
+  linkPreviews?: ThreadLinkPreview[];
   created_at: string;
   estimatedReadTime: number;
 }
@@ -64,6 +79,7 @@ export interface TweetNode {
   legacy?: TweetLegacy;
   core?: TweetCore;
   note_tweet?: NoteTweet;
+  tweet_card?: TweetCard;
   __typename?: string;
   tweet?: TweetNode; // For unwrapping TweetWithVisibilityResults
 }
@@ -102,6 +118,37 @@ export interface ExtendedEntities {
 
 export interface TweetEntities {
   media?: TweetMedia[];
+  urls?: TweetUrlEntity[];
+}
+
+export interface TweetUrlEntity {
+  url?: string;
+  expanded_url?: string;
+  display_url?: string;
+}
+
+export interface TweetCard {
+  legacy?: {
+    name?: string;
+    binding_values?: TweetCardBindingValue[];
+  };
+}
+
+/**
+ * X guarda la tarjeta como una lista de pares clave/valor. Solo se modelan las
+ * variantes que usamos: texto e imagen.
+ */
+export interface TweetCardBindingValue {
+  key?: string;
+  value?: {
+    string_value?: string;
+    image_value?: {
+      url?: string;
+      alt?: string;
+      width?: number;
+      height?: number;
+    };
+  };
 }
 
 export interface TweetMedia {

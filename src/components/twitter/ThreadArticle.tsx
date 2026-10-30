@@ -1,7 +1,7 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
-import { UnrolledThread } from '@/lib/twitter/types';
+import { UnrolledThread, ThreadLinkPreview } from '@/lib/twitter/types';
 import 'highlight.js/styles/github-dark.css';
 import type { Components } from 'react-markdown';
 import { ZoomImage } from '@/components/ZoomImage';
@@ -12,8 +12,76 @@ function largeUrl(url: string): string {
   return `${url}${url.includes('?') ? '&' : '?'}name=large`;
 }
 
+// Enlace normal dentro del hilo.
+function ThreadLink({ href, children }: { href?: string; children?: React.ReactNode }) {
+  const isExternal = href?.startsWith('http');
+  if (isExternal) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 text-palette-lime font-medium border border-palette-lime/30 bg-palette-lime/10 px-2.5 py-1.5 rounded-md text-sm hover:bg-palette-lime/20 hover:border-palette-lime/60 transition-all duration-200 no-underline"
+      >
+        {children}
+      </a>
+    );
+  }
+  return (
+    <a
+      href={href}
+      className="text-palette-lime font-medium underline underline-offset-4 decoration-palette-lime/50 decoration-2 hover:text-palette-lime hover:decoration-palette-lime transition-all duration-200"
+    >
+      {children}
+    </a>
+  );
+}
+
+/**
+ * Tarjeta de enlace de X: imagen de portada con el titular abajo a la izquierda.
+ * El parser emite el enlace de la card como Markdown normal, así que aquí solo
+ * hay que reconocer su href; el resto de enlaces mantienen el estilo de píldora.
+ */
+function LinkPreviewCard({ preview }: { preview: ThreadLinkPreview }) {
+  return (
+    <a
+      href={preview.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group my-2 block overflow-hidden rounded-xl border border-white/10 bg-palette-elevated no-underline shadow-lg transition-colors duration-200 hover:border-palette-lime/40"
+    >
+      <span className="relative block aspect-[1.91/1] w-full overflow-hidden">
+        {preview.imageUrl ? (
+          // pbs.twimg.com sirve también las card_img; sin referrer devuelve 200.
+          <img
+            src={preview.imageUrl}
+            alt={preview.imageAlt || ''}
+            loading="lazy"
+            decoding="async"
+            referrerPolicy="no-referrer"
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+          />
+        ) : (
+          <span className="absolute inset-0 bg-gradient-to-br from-palette-lime/15 via-transparent to-palette-pink/10" />
+        )}
+
+        <span className="absolute inset-x-0 bottom-0 block bg-gradient-to-t from-black/95 via-black/70 to-transparent px-4 pb-4 pt-16">
+          {preview.domain && (
+            <span className="mb-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-white/60">
+              {preview.domain}
+            </span>
+          )}
+          <span className="line-clamp-2 text-base font-semibold leading-snug text-white">
+            {preview.title}
+          </span>
+        </span>
+      </span>
+    </a>
+  );
+}
+
 // Custom markdown components for proper text hierarchy and spacing
-const components: Partial<Components> = {
+const baseComponents: Partial<Components> = {
   // Headings with clear hierarchy
   h1: ({ children }) => (
     <h1 className="text-4xl font-bold text-white mt-12 mb-8 pb-4 border-b border-gray-700 tracking-tight">
@@ -44,30 +112,6 @@ const components: Partial<Components> = {
     <p className="text-gray-300 leading-loose mb-6 text-base">{children}</p>
   ),
 
-  // Links with clear clickability
-  a: ({ href, children }) => {
-    const isExternal = href?.startsWith("http");
-    if (isExternal) {
-      return (
-        <a
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-palette-lime font-medium border border-palette-lime/30 bg-palette-lime/10 px-2.5 py-1.5 rounded-md text-sm hover:bg-palette-lime/20 hover:border-palette-lime/60 transition-all duration-200 no-underline"
-        >
-          {children}
-        </a>
-      );
-    }
-    return (
-      <a
-        href={href}
-        className="text-palette-lime font-medium underline underline-offset-4 decoration-palette-lime/50 decoration-2 hover:text-palette-lime hover:decoration-palette-lime transition-all duration-200"
-      >
-        {children}
-      </a>
-    );
-  },
 
   // Strong/bold text
   strong: ({ children }) => (
@@ -165,7 +209,31 @@ const components: Partial<Components> = {
   ),
 };
 
+/**
+ * Los componentes se construyen por hilo: el renderizador de `a` necesita el
+ * mapa de tarjetas de ESTE hilo y el resto del sitio no debe heredar ese
+ * comportamiento.
+ */
+function buildComponents(linkPreviews: Map<string, ThreadLinkPreview>): Partial<Components> {
+  return {
+    ...baseComponents,
+    a: ({ href, children }) => {
+      const preview = href ? linkPreviews.get(href) : undefined;
+      return preview ? (
+        <LinkPreviewCard preview={preview} />
+      ) : (
+        <ThreadLink href={href}>{children}</ThreadLink>
+      );
+    },
+  };
+}
+
 export function ThreadArticle({ thread }: { thread: UnrolledThread }) {
+  const linkPreviews = new Map(
+    (thread.linkPreviews ?? []).map((preview) => [preview.url, preview] as const)
+  );
+  const components = buildComponents(linkPreviews);
+
   return (
     <main className="min-h-screen bg-palette-card pt-12 pb-28 px-4 ">
       <article className="max-w-4xl mx-auto">

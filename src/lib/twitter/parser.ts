@@ -5,7 +5,7 @@ import 'server-only';
 
 import { unstable_cache } from 'next/cache';
 import { Logger } from "@/lib/logger";
-import { UnrolledThread, TweetDetailConversationResponse, TwtAPIRawResponse, TimelineInstruction, TimelineEntry, TweetNode, ThreadItem, TweetMedia } from '@/lib/twitter/types';
+import { UnrolledThread, TweetDetailConversationResponse, TwtAPIRawResponse, TimelineInstruction, TimelineEntry, TweetNode, ThreadItem, TweetMedia, ThreadLinkPreview } from '@/lib/twitter/types';
 import crypto from 'crypto';
 
 /**
@@ -147,9 +147,87 @@ async function fetchAndUnrollUncached(tweetId: string): Promise<UnrolledThread> 
  */
 export const fetchAndUnrollThread = unstable_cache(
   fetchAndUnrollUncached,
-  ['twtapi-thread'],
+  // v2: el parser ahora emite tarjetas de enlace. Cambiar la clave invalida los
+  // hilos guardados con el formato viejo (30 días); sin esto no verían cards.
+  ['twtapi-thread-v2'],
   { revalidate: CACHE_TTL_SECONDS },
 );
+
+// X publica la miniatura de una tarjeta en varias resoluciones. Se eligen las
+// panorámicas (1.91:1) antes que las cuadradas para que el recorte de la card
+// no se coma el texto de la propia imagen.
+const CARD_IMAGE_BINDINGS = [
+  'photo_image_full_size_large',
+  'summary_photo_image_large',
+  'photo_image_full_size',
+  'summary_photo_image',
+  'player_image_large',
+  'thumbnail_image_large',
+  'thumbnail_image_original',
+];
+
+const CARD_ALT_BINDINGS = [
+  'photo_image_full_size_alt_text',
+  'summary_photo_image_alt_text',
+  'player_image_alt_text',
+];
+
+/**
+ * Extrae la tarjeta de enlace de un tweet. Devuelve `undefined` para las
+ * tarjetas que no son un enlace con titular (por ejemplo `unified_card`, que
+ * usan los anuncios y no trae `binding_values`).
+ */
+function extractLinkPreview(tweet: TweetNode): ThreadLinkPreview | undefined {
+  const bindings = tweet.tweet_card?.legacy?.binding_values;
+  if (!bindings?.length) return undefined;
+
+  const byKey = new Map(
+    bindings.map((binding) => [binding.key ?? '', binding.value] as const)
+  );
+  const title = byKey.get('title')?.string_value?.trim();
+  if (!title) return undefined;
+
+  // `card_url` viene sin expandir (t.co), así que se cruza con `entities.urls`
+  // para quedarnos con el destino real; es lo que abre el enlace de la card.
+  // Si no viniera, X asocia la tarjeta al último enlace del tweet.
+  const cardUrl = byKey.get('card_url')?.string_value;
+  const urls = tweet.legacy?.entities?.urls ?? [];
+  const urlEntity =
+    urls.find(
+      (entity) =>
+        cardUrl && (entity.url === cardUrl || entity.expanded_url === cardUrl)
+    ) ??
+    [...urls].reverse().find((entity) => entity.expanded_url) ??
+    urls[urls.length - 1];
+
+  const url = urlEntity?.expanded_url ?? urlEntity?.url ?? cardUrl;
+  if (!url) return undefined;
+
+  const imageBinding = CARD_IMAGE_BINDINGS.map((key) => byKey.get(key)).find(
+    (value) => value?.image_value?.url
+  );
+  const altBinding = CARD_ALT_BINDINGS.map((key) => byKey.get(key)).find(
+    (value) => value?.string_value
+  );
+
+  return {
+    url,
+    title,
+    description: byKey.get('description')?.string_value?.trim() || undefined,
+    domain:
+      byKey.get('vanity_url')?.string_value?.trim() ||
+      byKey.get('domain')?.string_value?.trim() ||
+      undefined,
+    imageUrl: imageBinding?.image_value?.url,
+    imageAlt:
+      altBinding?.string_value?.trim() || imageBinding?.image_value?.alt || title,
+  };
+}
+
+/** El titular va como texto de un enlace Markdown: hay que neutralizar sus corchetes. */
+function escapeLinkText(text: string): string {
+  return text.replace(/\s+/g, ' ').replace(/([\\[\]])/g, '\\$1');
+}
 
 export function parseThreadToArticle(rawData: TwtAPIRawResponse): UnrolledThread {
   try {
@@ -237,9 +315,23 @@ export function parseThreadToArticle(rawData: TwtAPIRawResponse): UnrolledThread
 
     let markdownContent = '';
     const images: { url: string; alt: string }[] = [];
+    const linkPreviews: ThreadLinkPreview[] = [];
 
     allTweets.forEach((node, tweetIndex) => {
+      const linkPreview = extractLinkPreview(node);
       let text = node.legacy?.full_text || '';
+
+      // El enlace que respalda la tarjeta se quita del texto porque debajo se
+      // emite la tarjeta completa. Los demás t.co se dejan tal cual.
+      for (const entity of node.legacy?.entities?.urls ?? []) {
+        if (
+          entity.url &&
+          linkPreview &&
+          (entity.expanded_url === linkPreview.url || entity.url === linkPreview.url)
+        ) {
+          text = text.split(entity.url).join('');
+        }
+      }
 
       // Clean up standalone t.co links that just point to attached media
       text = text.replace(/https:\/\/t\.co\/[a-zA-Z0-9]+$/, '').trim();
@@ -266,6 +358,14 @@ export function parseThreadToArticle(rawData: TwtAPIRawResponse): UnrolledThread
         images.push({ url, alt });
         markdownContent += `![${alt}](${url})\n\n`;
       });
+
+      // La tarjeta va al final del tweet, donde X la muestra. Se escribe como un
+      // enlace Markdown normal: ThreadArticle lo reconoce por su href y lo pinta
+      // como card. Fuera del unroller sigue siendo un enlace válido.
+      if (linkPreview) {
+        linkPreviews.push(linkPreview);
+        markdownContent += `[${escapeLinkText(linkPreview.title)}](<${linkPreview.url}>)\n\n`;
+      }
     });
 
     // ---------------------------------------------------------
@@ -275,10 +375,12 @@ export function parseThreadToArticle(rawData: TwtAPIRawResponse): UnrolledThread
     const tweetId = rootTweetNode.rest_id || '';
 
     // Strip image markdown before trimming, otherwise a photo-first thread gets a
-    // raw pbs.twimg.com URL as its meta description.
+    // raw pbs.twimg.com URL as its meta description. Link cards contribute their
+    // headline, not the bracket syntax.
     const excerpt =
       markdownContent
         .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+        .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
         .replace(/\s+/g, ' ')
         .trim()
         .slice(0, 160) + '…';
@@ -296,6 +398,7 @@ export function parseThreadToArticle(rawData: TwtAPIRawResponse): UnrolledThread
       created_at: rootTweetNode.legacy?.created_at || new Date().toISOString(),
       markdownContent: markdownContent.trim(),
       images,
+      linkPreviews,
       estimatedReadTime: Math.max(1, Math.ceil(markdownContent.split(' ').length / 200)),
     };
   } catch (error) {
