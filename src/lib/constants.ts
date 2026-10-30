@@ -272,4 +272,3 @@ export const testimonials: Testimonial[] = [
 
 // Claves públicas de integración. No son secretos: viajan al navegador.
 export const TURNSTILE_SITE_KEY = "0x4AAAAAAFldAxTffAygHftq";
-export const CF_WEB_ANALYTICS_TOKEN = "3e4d8f86188f4e8db81c2bf34ff6957e";
