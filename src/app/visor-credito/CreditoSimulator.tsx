@@ -292,7 +292,7 @@ export default function CreditoSimulator() {
 										else if (state.sims.Pesos.result)
 											descargarPesos(state.sims.Pesos.result);
 									}}
-									className="flex items-center justify-center gap-2 rounded-md border border-white/15 px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:border-white/40"
+									className="flex items-center justify-center gap-1 rounded-md border border-white/15 px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:border-white/40"
 								>
 									<FileDown size={16} />
 									Descargar CSV
