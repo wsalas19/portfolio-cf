@@ -105,6 +105,21 @@ export interface Comparativa<F> {
 
 const EARaMensual = (ea: number) => Math.pow(1 + ea, 1 / 12) - 1;
 
+/**
+ * Colombia cotiza las tasas de vivienda de dos formas: efectiva anual (E.A.) o
+ * nominal anual mes vencido (N.A.M.V.). La N.A.M.V. se divide entre 12 para
+ * obtener la tasa periódica; la E.A. se compone. Confundirlas cambia la cuota.
+ */
+export const eaDesdeNamv = (namvPct: number) =>
+	(Math.pow(1 + namvPct / 1200, 12) - 1) * 100;
+
+export const namvDesdeEa = (eaPct: number) =>
+	(Math.pow(1 + eaPct / 100, 1 / 12) - 1) * 1200;
+
+/** Tasa periódica mensual (en %) a partir de una E.A. en %. */
+export const mensualDesdeEa = (eaPct: number) =>
+	(Math.pow(1 + eaPct / 100, 1 / 12) - 1) * 100;
+
 // Cuota del sistema francés (mes 1..n con tasa mensual equivalente)
 const cuotaFrancesa = (monto: number, i: number, n: number) =>
 	i > 0 ? monto * ((i * Math.pow(1 + i, n)) / (Math.pow(1 + i, n) - 1)) : monto / n;

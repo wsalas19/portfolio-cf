@@ -1,13 +1,19 @@
 // Configuración estática del visor de crédito: campos, defaults, tips y
 // helpers de formato. Sin JSX ni estado.
 
+import {
+	eaDesdeNamv,
+	mensualDesdeEa,
+	namvDesdeEa,
+} from "@/lib/credito";
+
 export const fmt = (n: number) => "$" + Math.round(n).toLocaleString("es-CO");
 export const cop = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 });
 
 // Texto general hereda la sans del app (Inter); los números van en mono.
 export const MONO = "[font-family:var(--font-credito-mono),monospace]";
 
-export type Option = { value: string; label: string };
+export type Option = { value: string; label: string; desc?: string };
 export type Field = {
 	id: string;
 	label: string;
@@ -17,11 +23,55 @@ export type Field = {
 	min?: string;
 	// Campo condicional: solo se muestra si el formulario cumple la condición.
 	showIf?: (values: Record<string, string>) => boolean;
+	// Selector segmentado incrustado en la etiqueta; guarda el valor en otro id.
+	segmented?: { id: string; options: Option[] };
+	// Atajos que escriben el valor del propio campo.
+	presets?: Option[];
+	// Línea calculada en vivo bajo el campo (equivalencias, etc.).
+	live?: (values: Record<string, string>) => string | null;
+	// Se pinta como dos tarjetas de opción en vez de un <select>.
+	cards?: boolean;
 };
 
+/** Números de tasa con coma decimal y hasta 3 decimales. */
+const num = (n: number) =>
+	n.toLocaleString("es-CO", { maximumFractionDigits: 3 });
+
+const unidadesTasa: Option[] = [
+	{ value: "ea", label: "E.A." },
+	{ value: "namv", label: "N.A.M.V." },
+];
+
+/**
+ * El motor compone la E.A.; aquí se muestra la triple equivalencia para que
+ * quien tenga una cotización en N.A.M.V. no la escriba como E.A. por error.
+ */
+export function equivalenciaTasa(
+	raw: string,
+	unidad: string | undefined,
+): string | null {
+	const valor = parseFloat(raw);
+	if (!Number.isFinite(valor) || valor <= 0) return null;
+	const ea = unidad === "namv" ? eaDesdeNamv(valor) : valor;
+	// Atrapa el clásico 1,2 queriendo decir 12% y las tasas escritas en la
+	// unidad equivocada, sin bloquear la simulación.
+	const aviso = ea < 3 || ea > 30 ? " · valor inusual, revisa la unidad" : "";
+	return `${num(ea)}% E.A. = ${num(namvDesdeEa(ea))}% N.A.M.V. = ${num(
+		mensualDesdeEa(ea),
+	)}% mensual${aviso}`;
+}
+
 const destinos: Option[] = [
-	{ value: "plazo", label: "Reducir plazo (misma cuota)" },
-	{ value: "cuota", label: "Reducir cuota (mismo plazo)" },
+	{
+		value: "plazo",
+		label: "Reducir plazo",
+		desc: "Misma cuota, terminas antes",
+	},
+	{
+		value: "cuota",
+		label: "Reducir cuota",
+		desc: "Mismo plazo, pagas menos",
+	},
 ];
 const frecuencias: Option[] = [
 	{ value: "unico", label: "Único (un mes)" },
@@ -68,9 +118,11 @@ export const UVR_FIELDS: Field[] = [
 	},
 	{
 		id: "tasaBase",
-		label: "Tasa Remuneratoria Base (E.A)",
+		label: "Tasa Remuneratoria Base",
 		step: "0.1",
-		note: 'Tasa sobre UVR · ej FNA cotiza "UVR + 8,1%"',
+		segmented: { id: "tasaUnidad", options: unidadesTasa },
+		note: 'Tasa sobre UVR · ej FNA cotiza "UVR + 8,1%" E.A.',
+		live: (v) => equivalenciaTasa(v.tasaBase, v.tasaUnidad),
 	},
 	{
 		id: "descuentoTasa",
@@ -81,9 +133,21 @@ export const UVR_FIELDS: Field[] = [
 	},
 	{
 		id: "inflacion",
-		label: "Inflación Anual (%)",
+		label: "Inflación esperada (IPC anual)",
 		step: "0.1",
-		note: "Proyección realista Banrep (meta 3% + margen)",
+		presets: [
+			{ value: "3", label: "3%" },
+			{ value: "5", label: "5%" },
+			{ value: "8", label: "8%" },
+		],
+		note: "Escenario, no pronóstico · la UVR real se certifica cada mes",
+		live: (v) => {
+			const valor = parseFloat(v.inflacion);
+			if (!Number.isFinite(valor) || valor <= 0) return null;
+			const mensual = mensualDesdeEa(valor);
+			const aviso = valor < 2 || valor > 9 ? " · fuera de rango típico" : "";
+			return `≈ ${num(mensual)}% mensual${aviso}`;
+		},
 	},
 	{
 		id: "seguroVidaPct",
@@ -110,7 +174,8 @@ export const UVR_FIELDS: Field[] = [
 		id: "destinoAbono",
 		label: "Destino del prepago",
 		options: destinos,
-		note: "Tú eliges si el prepago baja la cuota o el plazo",
+		cards: true,
+		note: "Ley 546/99: eliges tú, sin penalidad",
 	},
 	{
 		id: "tipoAporte",
@@ -152,9 +217,11 @@ export const PESOS_FIELDS: Field[] = [
 	},
 	{
 		id: "pTasaBase",
-		label: "Tasa de Interés (E.A)",
+		label: "Tasa de Interés",
 		step: "0.1",
-		note: "Tasa total en pesos · ej FNA línea pesos cotiza 12.6% EA",
+		segmented: { id: "pTasaUnidad", options: unidadesTasa },
+		note: "Tasa total en pesos · ej FNA línea pesos cotiza 12,6% E.A.",
+		live: (v) => equivalenciaTasa(v.pTasaBase, v.pTasaUnidad),
 	},
 	{
 		id: "pDescuentoTasa",
@@ -188,7 +255,8 @@ export const PESOS_FIELDS: Field[] = [
 		id: "pDestinoAbono",
 		label: "Destino del prepago",
 		options: destinos,
-		note: "Tú eliges si el prepago baja la cuota o el plazo",
+		cards: true,
+		note: "Ley 546/99: eliges tú, sin penalidad",
 	},
 	{
 		id: "pTipoAporte",
@@ -212,6 +280,7 @@ export const UVR_DEFAULTS: Record<string, string> = {
 	sistema: "cuotaConstante",
 	valorUVR: "395.50",
 	tasaBase: "8.1",
+	tasaUnidad: "ea",
 	descuentoTasa: "0.0",
 	inflacion: "5.0",
 	seguroVidaPct: "0.05",
@@ -228,6 +297,7 @@ export const PESOS_DEFAULTS: Record<string, string> = {
 	pPlazoAnios: "20",
 	pSistema: "cuotaConstante",
 	pTasaBase: "12.6",
+	pTasaUnidad: "ea",
 	pDescuentoTasa: "0.0",
 	pSeguroVidaPct: "0.05",
 	pSeguroHogarPct: "0.03",
@@ -330,6 +400,10 @@ export const FAQ: FaqEntry[] = [
 				url: "https://www.minvivienda.gov.co/viceministerio-de-vivienda-vis-y-vip",
 			},
 		],
+	},
+	{
+		q: "¿Qué diferencia hay entre una tasa E.A. y una N.A.M.V.?",
+		a: "La efectiva anual (E.A.) ya incluye la capitalización de los intereses durante el año; la nominal anual mes vencido (N.A.M.V.) no, y se convierte dividiendo entre 12 para obtener la tasa mensual. Por eso 12% N.A.M.V. equivale a 12,68% E.A., no a 12% E.A. Escribir una tasa N.A.M.V. en un campo que espera E.A. subestima la cuota. Este visor acepta ambas: elige la unidad junto al campo y muestra la equivalencia en E.A., N.A.M.V. y mensual antes de calcular.",
 	},
 	{
 		q: "¿Los resultados son una cotización oficial?",

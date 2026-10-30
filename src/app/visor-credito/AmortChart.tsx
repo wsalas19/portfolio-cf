@@ -32,6 +32,14 @@ Chart.register(
 const cssFont = (el: HTMLElement, v: string) =>
 	getComputedStyle(el).getPropertyValue(v) || "monospace";
 
+// Leyenda propia: chips HTML en vez del plugin de chart.js, para que se lea
+// igual en móvil (donde los ejes están ocultos) y quede accesible.
+const SERIES = [
+	{ label: "Cuota exigida + seguros", color: C_LIME },
+	{ label: "Saldo de deuda", color: C_PINK },
+	{ label: "Intereses acumulados", color: C_OLIVE, dashed: true },
+];
+
 export default function AmortChart({ data }: { data: Simulacion<unknown>["chart"] }) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const chartRef = useRef<Chart<"line"> | null>(null);
@@ -59,26 +67,29 @@ export default function AmortChart({ data }: { data: Simulacion<unknown>["chart"
 						// puntos siempre visibles: el usuario ve dónde hacer hover
 						pointRadius: 3,
 						pointHoverRadius: 6,
+						pointHitRadius: 14,
 						pointBackgroundColor: C_LIME,
 						fill: true,
 						tension: 0.3,
 						yAxisID: "y",
 					},
 					{
-						label: "Saldo Deuda (COP)",
+						label: "Saldo de deuda (COP)",
 						data: data.saldo,
 						borderColor: C_PINK,
 						borderWidth: 2,
 						pointRadius: 0,
+						pointHitRadius: 14,
 						tension: 0.3,
 						yAxisID: "y1",
 					},
 					{
-						label: "Intereses Pagados Acumulados (COP)",
+						label: "Intereses acumulados (COP)",
 						data: data.interesAcum,
 						borderColor: C_OLIVE,
 						borderWidth: 2,
 						pointRadius: 0,
+						pointHitRadius: 14,
 						borderDash: [6, 4],
 						tension: 0.3,
 						yAxisID: "y1",
@@ -150,8 +161,24 @@ export default function AmortChart({ data }: { data: Simulacion<unknown>["chart"
 	}, [data]);
 
 	return (
-		<div className="relative min-h-[180px] flex-1">
-			<canvas ref={canvasRef} />
+		<div className="flex min-h-[180px] flex-1 flex-col">
+			<ul className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-gray-400">
+				{SERIES.map((s) => (
+					<li key={s.label} className="flex items-center gap-1.5">
+						<span
+							aria-hidden
+							className={`h-0 w-4 border-t-2 ${
+								s.dashed ? "border-dashed" : ""
+							}`}
+							style={{ borderColor: s.color }}
+						/>
+						{s.label}
+					</li>
+				))}
+			</ul>
+			<div className="relative min-h-[160px] flex-1">
+				<canvas ref={canvasRef} />
+			</div>
 		</div>
 	);
 }

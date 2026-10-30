@@ -4,6 +4,7 @@
 import {
 	BaseParams,
 	DestinoAbono,
+	eaDesdeNamv,
 	FilaPesos,
 	FilaUVR,
 	Simulacion,
@@ -19,6 +20,14 @@ function frecuencia(v: Record<string, string>, id: string): TipoAporte {
 	return v[id] === "mensual" ? "mensual" : "unico";
 }
 
+/**
+ * El formulario puede recibir la tasa en E.A. o N.A.M.V.; el motor solo trabaja
+ * en E.A. La N.A.M.V. se pasa a efectiva anual antes de simular.
+ */
+function tasaEnEA(valor: number, unidad: string | undefined): number {
+	return unidad === "namv" ? eaDesdeNamv(valor) : valor;
+}
+
 export function uvrParamsFrom(v: Record<string, string>): UVRParams {
 	const num = (id: string) => parseFloat(v[id]);
 	return {
@@ -26,7 +35,7 @@ export function uvrParamsFrom(v: Record<string, string>): UVRParams {
 		porcentajeCredito: num("porcentajeCredito"),
 		plazoAnios: parseInt(v.plazoAnios),
 		sistema: v.sistema as UVRParams["sistema"],
-		tasaBaseEA: num("tasaBase"),
+		tasaBaseEA: tasaEnEA(num("tasaBase"), v.tasaUnidad),
 		descuentoTasa: num("descuentoTasa") || 0,
 		seguroVidaPct: num("seguroVidaPct") || 0,
 		seguroHogarPct: num("seguroHogarPct") || 0,
@@ -46,7 +55,7 @@ export function pesosParamsFrom(v: Record<string, string>): BaseParams {
 		porcentajeCredito: num("pPorcentajeCredito"),
 		plazoAnios: parseInt(v.pPlazoAnios),
 		sistema: v.pSistema as BaseParams["sistema"],
-		tasaBaseEA: num("pTasaBase"),
+		tasaBaseEA: tasaEnEA(num("pTasaBase"), v.pTasaUnidad),
 		descuentoTasa: num("pDescuentoTasa") || 0,
 		seguroVidaPct: num("pSeguroVidaPct") || 0,
 		seguroHogarPct: num("pSeguroHogarPct") || 0,

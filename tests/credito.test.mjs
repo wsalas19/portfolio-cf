@@ -12,6 +12,9 @@ import test from "node:test";
 import {
 	compararPesos,
 	compararUVR,
+	eaDesdeNamv,
+	mensualDesdeEa,
+	namvDesdeEa,
 	simularPesos,
 	simularUVR,
 } from "../src/lib/credito.ts";
@@ -217,6 +220,17 @@ test("pesos · un aporte mayor al saldo no genera saldos negativos", () => {
 
 	assert.equal(filas.at(-1).saldo, 0);
 	for (const f of filas) assert.ok(f.saldo >= 0, `mes ${f.mes}`);
+});
+
+test("tasas · N.A.M.V. y E.A. son equivalentes", () => {
+	// 12% N.A.M.V. = 1% mensual = 12,6825% E.A. (no 12% E.A.)
+	const ea = eaDesdeNamv(12);
+	assert.ok(Math.abs(ea - 12.6825) < 1e-3, `EA: ${ea}`);
+	assert.ok(Math.abs(namvDesdeEa(ea) - 12) < 1e-6);
+	assert.ok(Math.abs(mensualDesdeEa(ea) - 1) < 1e-9);
+
+	// La tasación compuesta no es la división simple.
+	assert.ok(Math.abs(ea - 12) > 0.5);
 });
 
 test("pesos · un descuento de tasa baja los intereses", () => {

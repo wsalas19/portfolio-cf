@@ -3,14 +3,16 @@
 // Piezas presentacionales del visor: tooltip, tarjetas de stat, formulario y
 // tabla de amortización. Sin lógica de negocio ni chart.js.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Input } from "@/components/ui/input";
 import {
 	BaseParams,
 	DestinoAbono,
+	eaDesdeNamv,
 	FilaPesos,
 	FilaUVR,
+	namvDesdeEa,
 	Resumen,
 	TipoAporte,
 } from "@/lib/credito";
@@ -26,6 +28,8 @@ export type ParamsSnap = BaseParams & {
 
 // Popover position:fixed para escapar del clip de los contenedores con scroll.
 // placement decide si el popover va por encima ("top") o por debajo ("bottom").
+// Se abre con hover, con foco de teclado y con tap: buena parte de la
+// explicación del visor vive aquí, así que no puede depender del mouse.
 export function Tip({
 	text,
 	placement = "top",
@@ -33,29 +37,61 @@ export function Tip({
 	text: string;
 	placement?: "top" | "bottom";
 }) {
-	const ref = useRef<HTMLSpanElement>(null);
+	const ref = useRef<HTMLButtonElement>(null);
 	const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
 
+	const abrir = () => {
+		const r = ref.current?.getBoundingClientRect();
+		if (!r) return;
+		setPos({
+			left: Math.max(
+				8,
+				Math.min(r.left + r.width / 2 - 125, window.innerWidth - 258),
+			),
+			top: placement === "bottom" ? r.bottom + 8 : r.top - 8,
+		});
+	};
+
+	// Un tap fuera del icono cierra el popover en pantallas táctiles.
+	useEffect(() => {
+		if (!pos) return;
+		const fuera = (e: PointerEvent) => {
+			if (!ref.current?.contains(e.target as Node)) setPos(null);
+		};
+		document.addEventListener("pointerdown", fuera);
+		return () => document.removeEventListener("pointerdown", fuera);
+	}, [pos]);
+
 	return (
-		<span
-			ref={ref}
-			className="ml-1.5 inline-flex h-[14px] w-[14px] cursor-help items-center justify-center rounded-full bg-palette-lime align-[1px] text-[10px] font-bold leading-none text-gray-900"
-			onMouseEnter={() => {
-				const r = ref.current!.getBoundingClientRect();
-				setPos({
-					left: Math.max(
-						8,
-						Math.min(r.left + r.width / 2 - 125, window.innerWidth - 258),
-					),
-					top: placement === "bottom" ? r.bottom + 8 : r.top - 8,
-				});
-			}}
-			onMouseLeave={() => setPos(null)}
-		>
-			i
+		<>
+			<button
+				ref={ref}
+				type="button"
+				aria-label="Más información"
+				aria-expanded={pos !== null}
+				className="ml-1.5 inline-flex h-[14px] w-[14px] cursor-help items-center justify-center rounded-full bg-palette-lime align-[1px] text-[10px] font-bold leading-none text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-palette-lime focus-visible:ring-offset-2 focus-visible:ring-offset-palette-card"
+				onMouseEnter={abrir}
+				onMouseLeave={() => setPos(null)}
+				onFocus={abrir}
+				onBlur={() => setPos(null)}
+				onPointerUp={(e) => {
+					if (e.pointerType === "mouse") return;
+					if (pos) setPos(null);
+					else abrir();
+				}}
+				onKeyDown={(e) => {
+					if (e.key === "Escape") {
+						setPos(null);
+						ref.current?.blur();
+					}
+				}}
+			>
+				i
+			</button>
 			{pos &&
 				createPortal(
 					<div
+						role="tooltip"
 						style={{
 							position: "fixed",
 							left: pos.left,
@@ -69,7 +105,7 @@ export function Tip({
 					</div>,
 					document.body,
 				)}
-		</span>
+		</>
 	);
 }
 
@@ -228,8 +264,63 @@ export function CrecimientoUVR({ base }: { base: Resumen }) {
 	);
 }
 
-/** Composición de totalPagado: capital + intereses + seguros + ajuste UVR. */
-export function DesgloseTotal({
+/**
+ * Sensibilidad a la inflación: la cuota en UVR no cambia, la de pesos sí. Tres
+ * escenarios con los mismos parámetros de la corrida, para que el supuesto deje
+ * de ser invisible.
+ */
+export function SensibilidadInflacion({
+	rows,
+	actual,
+}: {
+	rows: { inflacion: number; cuotaAnio5: number | null; totalPagado: number }[];
+	actual: number;
+}) {
+	return (
+		<div className="shrink-0 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
+			<div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3">
+				<h2 className="text-[10px] font-medium uppercase tracking-wider text-gray-500">
+					Si la inflación fuera otra
+				</h2>
+				<span className="text-[10px] text-gray-600">
+					Mismos parámetros · solo cambia el IPC anual
+				</span>
+			</div>
+			<table className="w-full text-[11px]">
+				<thead>
+					<tr className="text-left text-gray-500">
+						<th className="pb-1 font-medium">Inflación</th>
+						<th className="pb-1 text-right font-medium">Cuota año 5</th>
+						<th className="pb-1 text-right font-medium">Total pagado</th>
+					</tr>
+				</thead>
+				<tbody>
+					{rows.map((row) => {
+						const esActual = Math.abs(row.inflacion - actual) < 0.05;
+						return (
+							<tr
+								key={row.inflacion}
+								className={esActual ? "text-palette-lime" : "text-gray-300"}
+							>
+								<td className={`py-0.5 ${MONO}`}>
+									{row.inflacion.toFixed(1)}%{esActual && " ★"}
+								</td>
+								<td className={`py-0.5 text-right ${MONO}`}>
+									{row.cuotaAnio5 !== null ? fmt(row.cuotaAnio5) : "—"}
+								</td>
+								<td className={`py-0.5 text-right ${MONO}`}>
+									{fmt(row.totalPagado)}
+								</td>
+							</tr>
+						);
+					})}
+				</tbody>
+			</table>
+		</div>
+	);
+}
+
+/** Composición de totalPagado: capital + intereses + seguros + ajuste UVR. */export function DesgloseTotal({
 	resumen,
 	tab,
 }: {
@@ -328,52 +419,174 @@ export function FormFields({
 	const visibles = fields.filter((f) => !f.showIf || f.showIf(values));
 	return (
 		<div className="grid grid-cols-1 gap-4 gap-x-4 sm:grid-cols-2">
-			{visibles.map((f, i) => (
-				<div
-					key={f.id}
-					className={
-						visibles.length % 2 === 1 && i === visibles.length - 1
-							? "sm:col-span-2"
-							: ""
-					}
-				>
-					<label
-						className="mb-1.5 block text-xs font-medium tracking-wide text-gray-400"
-						htmlFor={f.id}
+			{visibles.map((f, i) => {
+				const live = f.live?.(values) ?? null;
+				return (
+					<div
+						key={f.id}
+						className={
+							f.cards ||
+							(visibles.length % 2 === 1 && i === visibles.length - 1)
+								? "sm:col-span-2"
+								: ""
+						}
 					>
-						{f.label}
-					</label>
-					{f.options ? (
-						<select
-							id={f.id}
-							className={`w-full rounded-md border border-white/10 bg-palette-card px-3 py-2.5 text-sm text-white outline-none transition-colors focus:border-palette-lime ${MONO}`}
-							value={values[f.id]}
-							onChange={(e) => onChangeAction(f.id, e.target.value)}
-						>
-							{f.options.map((o) => (
-								<option key={o.value} value={o.value}>
-									{o.label}
-								</option>
-							))}
-						</select>
-					) : (
-						<Input
-							type="number"
-							id={f.id}
-							step={f.step}
-							min={f.min}
-							className={`hide-spinners h-10 w-full border-white/10 bg-palette-card text-sm text-white focus-visible:ring-palette-lime ${MONO}`}
-							value={values[f.id]}
-							onChange={(e) => onChangeAction(f.id, e.target.value)}
-						/>
-					)}
-					{f.note && (
-						<p className="mt-1 text-[11px] leading-snug text-gray-500">
-							{f.note}
-						</p>
-					)}
-				</div>
-			))}
+						<div className="mb-1.5 flex items-baseline justify-between gap-2">
+							{f.cards ? (
+								<span className="block text-xs font-medium tracking-wide text-gray-400">
+									{f.label}
+								</span>
+							) : (
+								<label
+									className="block text-xs font-medium tracking-wide text-gray-400"
+									htmlFor={f.id}
+								>
+									{f.label}
+								</label>
+							)}
+						</div>
+						{f.options && f.cards ? (
+							<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+								{f.options.map((o) => {
+									const activo = values[f.id] === o.value;
+									return (
+										<button
+											key={o.value}
+											type="button"
+											aria-pressed={activo}
+											onClick={() => onChangeAction(f.id, o.value)}
+											className={`rounded-md border px-3 py-2 text-left transition-colors ${
+												activo
+													? "border-palette-lime/60 bg-palette-lime/[0.08]"
+													: "border-white/10 bg-palette-card hover:border-white/25"
+											}`}
+										>
+											<span
+												className={`block text-xs font-semibold ${
+													activo ? "text-palette-lime" : "text-white"
+												}`}
+											>
+												{o.label}
+											</span>
+											{o.desc && (
+												<span className="mt-0.5 block text-[10px] leading-snug text-gray-500">
+													{o.desc}
+												</span>
+											)}
+										</button>
+									);
+								})}
+							</div>
+						) : f.options ? (
+							<select
+								id={f.id}
+								className={`w-full rounded-md border border-white/10 bg-palette-card px-3 py-2.5 text-sm text-white outline-none transition-colors focus:border-palette-lime ${MONO}`}
+								value={values[f.id]}
+								onChange={(e) => onChangeAction(f.id, e.target.value)}
+							>
+								{f.options.map((o) => (
+									<option key={o.value} value={o.value}>
+										{o.label}
+									</option>
+								))}
+							</select>
+						) : (
+							<div className="relative">
+								<Input
+									type="number"
+									id={f.id}
+									step={f.step}
+									min={f.min}
+									className={`hide-spinners h-10 w-full border-white/10 bg-palette-card text-sm text-white focus-visible:ring-palette-lime ${MONO} ${
+										f.segmented ? "pr-[74px]" : ""
+									}`}
+									value={values[f.id]}
+									onChange={(e) => onChangeAction(f.id, e.target.value)}
+								/>
+								{f.segmented && (
+									<div
+										role="group"
+										aria-label="Unidad de la tasa"
+										className="absolute right-1 top-1/2 flex -translate-y-1/2 overflow-hidden rounded border border-white/15 bg-palette-alt"
+									>
+										{f.segmented.options.map((o) => {
+											const activo =
+												(values[f.segmented!.id] ?? "ea") === o.value;
+											return (
+												<button
+													key={o.value}
+													type="button"
+													aria-pressed={activo}
+													onClick={() => {
+														const segId = f.segmented!.id;
+														const actual = values[segId] ?? "ea";
+														if (actual === o.value) return;
+														// Cambiar de unidad no debe cambiar el costo del
+														// crédito: se convierte el número mostrado.
+														const crudo = parseFloat(values[f.id]);
+														if (Number.isFinite(crudo) && crudo > 0) {
+															const ea =
+																actual === "namv"
+																	? eaDesdeNamv(crudo)
+																	: crudo;
+															const nuevo =
+																o.value === "namv" ? namvDesdeEa(ea) : ea;
+															onChangeAction(
+																f.id,
+																String(Number(nuevo.toFixed(4))),
+															);
+														}
+														onChangeAction(segId, o.value);
+													}}
+													className={`px-1.5 py-1 text-[10px] font-semibold transition-colors ${
+														activo
+															? "bg-palette-lime text-gray-900"
+															: "bg-transparent text-gray-400 hover:text-white"
+													}`}
+												>
+													{o.label}
+												</button>
+											);
+										})}
+									</div>
+								)}
+							</div>
+						)}
+						{f.presets && (
+							<div className="mt-1.5 flex gap-1">
+								{f.presets.map((p) => {
+									const activo = values[f.id] === p.value;
+									return (
+										<button
+											key={p.value}
+											type="button"
+											aria-pressed={activo}
+											onClick={() => onChangeAction(f.id, p.value)}
+											className={`rounded border px-2 py-0.5 text-[10px] font-semibold transition-colors ${
+												activo
+													? "border-palette-lime/60 bg-palette-lime/15 text-palette-lime"
+													: "border-white/10 text-gray-400 hover:border-white/30 hover:text-white"
+											}`}
+										>
+											{p.label}
+										</button>
+									);
+								})}
+							</div>
+						)}
+						{live && (
+							<p className={`mt-1 text-[11px] leading-snug text-gray-400 ${MONO}`}>
+								{live}
+							</p>
+						)}
+						{f.note && (
+							<p className="mt-1 text-[11px] leading-snug text-gray-500">
+								{f.note}
+							</p>
+						)}
+					</div>
+				);
+			})}
 		</div>
 	);
 }
@@ -482,6 +695,11 @@ export function ComparativaAbonos({
 				{items.map(({ key, titulo, desc, r }) => {
 					const elegido = destino === key;
 					const ahorro = Math.max(0, base.interesAcum - r.interesAcum);
+					const mesesMenos = base.finCreditoMes - r.finCreditoMes;
+					const cuotaMenos = Math.max(
+						0,
+						base.cuotaExigidaFinal - r.cuotaExigidaFinal,
+					);
 					return (
 						<div
 							key={key}
@@ -522,11 +740,19 @@ export function ComparativaAbonos({
 								<dd className={`text-right text-palette-lime ${MONO}`}>
 									{fmt(ahorro)}
 								</dd>
-								<dt className="text-gray-500">Total pagado</dt>
+								<dt className="text-gray-500">Total desembolsado</dt>
 								<dd className={`text-right text-white ${MONO}`}>
 									{fmt(r.totalPagado)}
 								</dd>
 							</dl>
+							<p className="mt-1.5 border-t border-white/10 pt-1.5 text-[10px] leading-snug text-gray-400">
+								<span className="text-gray-500">vs. sin prepago: </span>
+								{mesesMenos > 0 ? `−${mesesMenos} meses` : "mismo plazo"}
+								{" · "}
+								{key === "cuota" && cuotaMenos > 0
+									? `cuota final −${fmt(cuotaMenos)}`
+									: "pago mensual igual"}
+							</p>
 						</div>
 					);
 				})}

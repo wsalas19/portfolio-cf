@@ -1,6 +1,6 @@
 "use client";
 
-import { useReducer } from "react";
+import { useMemo, useReducer } from "react";
 import Link from "next/link";
 import { AlertTriangle, Banknote, Calculator, FileDown, Landmark, RotateCcw } from "lucide-react";
 import {
@@ -15,6 +15,8 @@ import {
 	TipoAporte,
 	compararPesos,
 	compararUVR,
+	simularUVR,
+	UVRParams,
 } from "@/lib/credito";
 import AmortChart from "./AmortChart";
 import {
@@ -39,6 +41,7 @@ import {
 	Resultados,
 	Stat,
 	Supuestos,
+	SensibilidadInflacion,
 } from "./ui";
 
 type Comp = {
@@ -197,6 +200,22 @@ export default function CreditoSimulator() {
 	const comp = active.comp;
 	const snap = active.snap;
 	const dirty = state.dirty[state.tab];
+
+	// Sensibilidad: se recalcula solo cuando cambia la corrida, no en cada
+	// tecleo, porque usa el snapshot y no el formulario.
+	const sensibilidad = useMemo(() => {
+		if (tab !== "UVR" || !snap) return null;
+		const base = snap as UVRParams;
+		const escenarios = [3, 5, 8].map((inflacion) => {
+			const s = simularUVR({ ...base, inflacionEA: inflacion });
+			return {
+				inflacion,
+				cuotaAnio5: s.resumen.cuotaAnio5,
+				totalPagado: s.resumen.totalPagado,
+			};
+		});
+		return { escenarios, actual: base.inflacionEA };
+	}, [tab, snap]);
 	const fin = r
 		? `Mes ${r.resumen.finCreditoMes}`
 		: "";
@@ -369,6 +388,13 @@ export default function CreditoSimulator() {
 
 								{tab === "UVR" && comp && (
 									<CrecimientoUVR base={comp.resumenes.sinAbono} />
+								)}
+
+								{sensibilidad && (
+									<SensibilidadInflacion
+										rows={sensibilidad.escenarios}
+										actual={sensibilidad.actual}
+									/>
 								)}
 
 								<DesgloseTotal resumen={r.resumen} tab={tab} />
