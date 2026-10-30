@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import type { ImgHTMLAttributes } from "react";
 import { createPortal } from "react-dom";
 import { Image } from "@unpic/react";
 import { X } from "lucide-react";
@@ -13,6 +14,11 @@ interface ZoomImageProps {
 	/** Clases del botón que envuelve la miniatura. Limita el ancho, nunca la altura. */
 	wrapperClassName?: string;
 	sizes?: string;
+	/**
+	 * `pbs.twimg.com` responde 351 Forbidden a cualquier Referer que no sea
+	 * x.com/twitter.com. Las fotos de un hilo se sirven con `no-referrer`.
+	 */
+	referrerPolicy?: ImgHTMLAttributes<HTMLImageElement>["referrerPolicy"];
 }
 
 // Miniatura clicable que abre la imagen completa. El <dialog> se monta en un
@@ -25,6 +31,7 @@ export function ZoomImage({
 	expandSrc = src,
 	wrapperClassName = "mx-auto block w-full cursor-zoom-in sm:max-w-md",
 	sizes = "(max-width: 640px) 100vw, 448px",
+	referrerPolicy,
 }: ZoomImageProps) {
 	const dialogRef = useRef<HTMLDialogElement>(null);
 	const [open, setOpen] = useState(false);
@@ -55,6 +62,7 @@ export function ZoomImage({
 					alt={alt}
 					layout="fullWidth"
 					sizes={sizes}
+					referrerPolicy={referrerPolicy}
 					className="h-auto w-full rounded-lg border border-white/10 transition-opacity duration-200 hover:opacity-90"
 				/>
 			</button>
@@ -77,6 +85,7 @@ export function ZoomImage({
 						<img
 							src={expandSrc}
 							alt={alt}
+							referrerPolicy={referrerPolicy}
 							className="max-h-[74vh] max-w-[88vw] rounded-2xl border border-white/20 object-contain"
 						/>
 						{/* Cierre debajo de la foto: al no superponerse, el borde de la

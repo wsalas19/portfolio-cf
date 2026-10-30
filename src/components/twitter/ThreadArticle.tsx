@@ -3,7 +3,6 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import { UnrolledThread } from '@/lib/twitter/types';
 import 'highlight.js/styles/github-dark.css';
-import Image from 'next/image';
 import type { Components } from 'react-markdown';
 import { ZoomImage } from '@/components/ZoomImage';
 
@@ -76,9 +75,16 @@ const components: Partial<Components> = {
   ),
 
   // Photos arrive as inline Markdown, below the tweet that attached them.
+  // `no-referrer` es obligatorio: pbs.twimg.com devuelve 351 Forbidden si el
+  // Referer no es x.com, y el navegador bloquearía la respuesta (ORB).
   img: ({ src, alt }) =>
     typeof src === 'string' ? (
-      <ZoomImage src={src} alt={alt || 'Tweet image'} expandSrc={largeUrl(src)} />
+      <ZoomImage
+        src={src}
+        alt={alt || 'Tweet image'}
+        expandSrc={largeUrl(src)}
+        referrerPolicy="no-referrer"
+      />
     ) : null,
 
   // Inline code vs code blocks
@@ -176,11 +182,18 @@ export function ThreadArticle({ thread }: { thread: UnrolledThread }) {
 
             <div className="flex items-center gap-4">
               {thread.author.avatar_url ? (
-                <Image
+                // <img> y no next/image: vinext descarta props extra (como
+                // referrerPolicy) al delegar avatares remotos a unpic, y sin
+                // `no-referrer` pbs.twimg.com responde 351 y el navegador
+                // bloquea la respuesta por ORB.
+                <img
                   src={thread.author.avatar_url}
                   alt={thread.author.name}
                   width={48}
                   height={48}
+                  loading="eager"
+                  decoding="async"
+                  referrerPolicy="no-referrer"
                   className="rounded-full border border-white/10"
                 />
               ) : (
