@@ -101,28 +101,28 @@ export const UVR_FIELDS: Field[] = [
 	},
 	{
 		id: "aporteExtra",
-		label: "Aporte Adicional a Capital (COP)",
+		label: "Prepago a capital (COP)",
 		step: "100000",
 		min: "0",
 		note: "Prepago parcial sin penalidad (Ley 546/99)",
 	},
 	{
 		id: "destinoAbono",
-		label: "Destino del Aporte",
+		label: "Destino del prepago",
 		options: destinos,
-		note: "Tú eliges si el abono baja la cuota o el plazo",
+		note: "Tú eliges si el prepago baja la cuota o el plazo",
 	},
 	{
 		id: "tipoAporte",
-		label: "Frecuencia del Aporte",
+		label: "Frecuencia del prepago",
 		options: frecuencias,
 	},
 	{
 		id: "mesAbono",
-		label: "Mes del Aporte Único",
+		label: "Mes del prepago único",
 		step: "1",
 		min: "1",
-		note: "Mes en que se aplica el abono (1 = primer mes)",
+		note: "Mes en que se aplica el prepago (1 = primer mes)",
 		showIf: (v) => v.tipoAporte === "unico",
 	},
 ];
@@ -179,28 +179,28 @@ export const PESOS_FIELDS: Field[] = [
 	},
 	{
 		id: "pAporteExtra",
-		label: "Aporte Adicional (COP)",
+		label: "Prepago a capital (COP)",
 		step: "100000",
 		min: "0",
 		note: "Prepago parcial sin penalidad (Ley 546/99)",
 	},
 	{
 		id: "pDestinoAbono",
-		label: "Destino del Aporte",
+		label: "Destino del prepago",
 		options: destinos,
-		note: "Tú eliges si el abono baja la cuota o el plazo",
+		note: "Tú eliges si el prepago baja la cuota o el plazo",
 	},
 	{
 		id: "pTipoAporte",
-		label: "Frecuencia del Aporte",
+		label: "Frecuencia del prepago",
 		options: frecuencias,
 	},
 	{
 		id: "pMesAbono",
-		label: "Mes del Aporte Único",
+		label: "Mes del prepago único",
 		step: "1",
 		min: "1",
-		note: "Mes en que se aplica el abono (1 = primer mes)",
+		note: "Mes en que se aplica el prepago (1 = primer mes)",
 		showIf: (v) => v.pTipoAporte === "unico",
 	},
 ];
@@ -343,19 +343,19 @@ export const TIPS: Record<string, string> = {
 		"Cuota exigida en UVR: fija en 'Cuota Constante'. En pesos crece con la inflación al pagarse con la UVR del mes.",
 	interesUVR:
 		"Saldo × tasa mensual. Solo la deuda genera interés; seguros e inflación no. Es la parte de la cuota que no amortiza.",
-	abonoUVR:
-		"Parte de la cuota que amortiza deuda: cuota − interés. Crece con el tiempo. No incluye el aporte extra.",
+	capital:
+		"Capital: parte de la cuota que amortiza deuda (cuota − interés). Crece con el tiempo. No incluye el prepago.",
 	saldoUVR:
 		"Deuda pendiente en UVR tras el pago del mes. Base del interés del mes siguiente.",
-	extra:
+	prepago:
 		"Prepago parcial sin penalidad (Ley 546/99). Según el destino elegido reduce el plazo (misma cuota) o la cuota (mismo plazo).",
 	seguros:
 		"Vida: % del saldo (baja al amortizar). Hogar: fijo, ~80% del inmueble. No generan interés.",
-	cuotaTotal: "Lo que pagas este mes: (cuota + extra) × UVR del mes + seguros.",
+	cuotaTotal: "Lo que pagas este mes: (cuota + prepago) × UVR del mes + seguros.",
 	saldoCOP:
 		"Saldo en UVR × UVR del mes. Puede subir con la inflación aunque amortices.",
 	totalPagado:
-		"Suma de todo lo desembolsado desde el mes 1 hasta el cierre del crédito: cuotas exigidas + aportes adicionales a capital + seguros, en pesos de cada mes de pago. Incluye capital, intereses remuneratorios y el ajuste por inflación de la UVR (por eso supera el monto prestado). No incluye gastos de origen (notaría, avalúo).",
+		"Suma de todo lo desembolsado desde el mes 1 hasta el cierre del crédito: cuotas exigidas + prepagos + seguros, en pesos de cada mes de pago. Incluye capital, intereses remuneratorios y el ajuste por inflación de la UVR (por eso supera el monto prestado). No incluye gastos de origen (notaría, avalúo).",
 	totalPagadoPesos:
-		"Suma de todo lo desembolsado desde el mes 1 hasta el cierre del crédito: cuotas exigidas + aportes adicionales a capital + seguros, en pesos constantes (la cuota NO crece con el tiempo). Incluye capital e intereses. No incluye gastos de origen (notaría, avalúo).",
+		"Suma de todo lo desembolsado desde el mes 1 hasta el cierre del crédito: cuotas exigidas + prepagos + seguros, en pesos constantes (la cuota NO crece con el tiempo). Incluye capital e intereses. No incluye gastos de origen (notaría, avalúo).",
 };

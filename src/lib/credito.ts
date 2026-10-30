@@ -61,6 +61,10 @@ export interface Resumen {
 	montoUVR: number | null;
 	tasaEA: number; // % EA aplicada
 	cuota1: number;
+	// Cuota mensual sin prepagos: cuota exigida + seguros del mes 1 / del último
+	// mes. `cuota1` y `cuotaFinal` incluyen el prepago si cae en ese mes.
+	mensualidad1: number;
+	mensualidadFinal: number;
 	cuotaAnio5: number | null; // null => ver cuotaAnio5Nota
 	cuotaAnio5Nota: string;
 	cuotaFinal: number;
@@ -68,6 +72,10 @@ export interface Resumen {
 	finNota: string;
 	totalPagado: number;
 	interesAcum: number;
+	// Desglose de totalPagado: capital (montoCOP) + intereses + seguros +
+	// ajuste UVR. En pesos el ajuste siempre es 0.
+	segurosAcum: number;
+	ajusteUVR: number;
 	destinoAbono: DestinoAbono;
 	// Cuota exigida (interés + capital programado), sin aporte ni seguros.
 	// En UVR se expresa en COP con la UVR del mes correspondiente.
@@ -128,6 +136,10 @@ function resumenComun(
 		destinoAbono: DestinoAbono;
 		cuotaExigida1: number;
 		cuotaExigidaFinal: number;
+		seguros1: number;
+		segurosFinal: number;
+		segurosAcum: number;
+		ajusteUVR: number;
 	},
 ): Resumen {
 	let cuotaAnio5Nota = "";
@@ -156,6 +168,8 @@ function resumenComun(
 		montoUVR: null,
 		tasaEA: tasaFinalEA * 100,
 		cuota1,
+		mensualidad1: extra.cuotaExigida1 + extra.seguros1,
+		mensualidadFinal: extra.cuotaExigidaFinal + extra.segurosFinal,
 		cuotaAnio5: cuotaAnio5Val,
 		cuotaAnio5Nota,
 		cuotaFinal,
@@ -163,6 +177,8 @@ function resumenComun(
 		finNota,
 		totalPagado,
 		interesAcum,
+		segurosAcum: extra.segurosAcum,
+		ajusteUVR: extra.ajusteUVR,
 		destinoAbono: extra.destinoAbono,
 		cuotaExigida1: extra.cuotaExigida1,
 		cuotaExigidaFinal: extra.cuotaExigidaFinal,
@@ -217,7 +233,8 @@ export function simularUVR(p: UVRParams): Simulacion<FilaUVR> {
 	const tasaFinalEA = Math.max(0, (p.tasaBaseEA - p.descuentoTasa) / 100);
 
 	const n = p.plazoAnios * 12;
-	const montoUVR = p.valorInmueble * (p.porcentajeCredito / 100) / p.valorUVR;
+	const montoCOP = p.valorInmueble * (p.porcentajeCredito / 100);
+	const montoUVR = montoCOP / p.valorUVR;
 	const iMensual = EARaMensual(tasaFinalEA);
 	const infMensual = EARaMensual(p.inflacionEA / 100);
 	const cuotaUVRFija =
@@ -233,6 +250,10 @@ export function simularUVR(p: UVRParams): Simulacion<FilaUVR> {
 	let mesFinCredito = n;
 	let totalPagado = 0;
 	let interesAcum = 0;
+	let segurosAcum = 0;
+	// Capital amortizado convertido a pesos del mes de pago. Su exceso sobre el
+	// monto prestado es el ajuste por indexación de la UVR.
+	let capitalCOP = 0;
 	let cuota1 = 0;
 	let cuotaAnio5 = 0;
 	let cuotaFinal = 0;
@@ -240,6 +261,8 @@ export function simularUVR(p: UVRParams): Simulacion<FilaUVR> {
 	let cuotaExigidaFinal = 0;
 	let cuotaExigida1UVR = 0;
 	let cuotaExigidaFinalUVR = 0;
+	let seguros1 = 0;
+	let segurosFinal = 0;
 	let lastCuota = 0;
 	let lastSaldo = 0;
 
@@ -277,16 +300,20 @@ export function simularUVR(p: UVRParams): Simulacion<FilaUVR> {
 		const cuotaExigidaCOP = cuotaUVR * uvrActual + segurosCOP;
 		const saldoCOP = saldoUVR * uvrActual;
 		totalPagado += cuotaCOP;
+		segurosAcum += segurosCOP;
+		capitalCOP += abonoCapitalUVR * uvrActual;
 
 		if (mes === 1) {
 			cuota1 = cuotaCOP;
 			cuotaExigida1 = cuotaExigidaUVR * uvrActual;
 			cuotaExigida1UVR = cuotaExigidaUVR;
+			seguros1 = segurosCOP;
 		}
 		if (mes === 60 && saldoUVR > 0) cuotaAnio5 = cuotaCOP;
 		cuotaFinal = cuotaCOP;
 		cuotaExigidaFinal = cuotaExigidaUVR * uvrActual;
 		cuotaExigidaFinalUVR = cuotaExigidaUVR;
+		segurosFinal = segurosCOP;
 		lastCuota = cuotaExigidaCOP;
 		lastSaldo = saldoCOP;
 
@@ -330,7 +357,15 @@ export function simularUVR(p: UVRParams): Simulacion<FilaUVR> {
 	const resumen = resumenComun(
 		{ ...p, aporteExtra }, tasaFinalEA, n, cuota1, cuotaAnio5, cuotaFinal,
 		mesFinCredito, totalPagado, interesAcum,
-		{ destinoAbono, cuotaExigida1, cuotaExigidaFinal },
+		{
+			destinoAbono,
+			cuotaExigida1,
+			cuotaExigidaFinal,
+			seguros1,
+			segurosFinal,
+			segurosAcum,
+			ajusteUVR: capitalCOP - montoCOP,
+		},
 	);
 	resumen.montoUVR = montoUVR;
 	resumen.reduccionCuotaPct =
@@ -364,11 +399,14 @@ export function simularPesos(p: BaseParams): Simulacion<FilaPesos> {
 	let mesFinCredito = n;
 	let totalPagado = 0;
 	let interesAcum = 0;
+	let segurosAcum = 0;
 	let cuota1 = 0;
 	let cuotaAnio5 = 0;
 	let cuotaFinal = 0;
 	let cuotaExigida1 = 0;
 	let cuotaExigidaFinal = 0;
+	let seguros1 = 0;
+	let segurosFinal = 0;
 	let lastCuota = 0;
 	let lastSaldo = 0;
 
@@ -399,14 +437,17 @@ export function simularPesos(p: BaseParams): Simulacion<FilaPesos> {
 		const cuotaTotalCOP = cuota + abonoExtra + segurosCOP;
 		const cuotaExigidaCOP = cuota + segurosCOP;
 		totalPagado += cuotaTotalCOP;
+		segurosAcum += segurosCOP;
 
 		if (mes === 1) {
 			cuota1 = cuotaTotalCOP;
 			cuotaExigida1 = cuotaExigida;
+			seguros1 = segurosCOP;
 		}
 		if (mes === 60 && saldo > 0) cuotaAnio5 = cuotaTotalCOP;
 		cuotaFinal = cuotaTotalCOP;
 		cuotaExigidaFinal = cuotaExigida;
+		segurosFinal = segurosCOP;
 		lastCuota = cuotaExigidaCOP;
 		lastSaldo = saldo;
 
@@ -440,7 +481,7 @@ export function simularPesos(p: BaseParams): Simulacion<FilaPesos> {
 	const resumen = resumenComun(
 		{ ...p, aporteExtra }, tasaFinalEA, n, cuota1, cuotaAnio5, cuotaFinal,
 		mesFinCredito, totalPagado, interesAcum,
-		{ destinoAbono, cuotaExigida1, cuotaExigidaFinal },
+		{ destinoAbono, cuotaExigida1, cuotaExigidaFinal, seguros1, segurosFinal, segurosAcum, ajusteUVR: 0 },
 	);
 	resumen.reduccionCuotaPct =
 		destinoAbono === "cuota" && cuotaExigida1 > 0

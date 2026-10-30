@@ -73,7 +73,7 @@ function descargarCSV(nombre: string, encabezado: string, filas: unknown[][]) {
 export function descargarUVR(r: Simulacion<FilaUVR>) {
 	descargarCSV(
 		`amortizacion_hipotecaria_${r.resumen.destinoAbono === "cuota" ? "reducir_cuota" : "reducir_plazo"}.csv`,
-		"Mes;Valor UVR;Cuota UVR;Interes UVR;Abono Capital UVR;Saldo Capital UVR;Aporte Extra COP;Seguros COP;Cuota Total COP;Saldo Capital COP",
+		"Mes;Valor UVR;Cuota UVR;Interes UVR;Capital UVR;Saldo Capital UVR;Prepago COP;Seguros COP;Cuota Total COP;Saldo Capital COP",
 		r.filas.map((f) => [
 			f.mes,
 			f.uvr.toFixed(2),
@@ -92,7 +92,7 @@ export function descargarUVR(r: Simulacion<FilaUVR>) {
 export function descargarPesos(r: Simulacion<FilaPesos>) {
 	descargarCSV(
 		`amortizacion_pesos_${r.resumen.destinoAbono === "cuota" ? "reducir_cuota" : "reducir_plazo"}.csv`,
-		"Mes;Cuota COP;Interes COP;Abono Capital COP;Saldo Capital COP;Aporte Extra COP;Seguros COP;Cuota Total COP",
+		"Mes;Cuota COP;Interes COP;Capital COP;Saldo Capital COP;Prepago COP;Seguros COP;Cuota Total COP",
 		r.filas.map((f) => [
 			f.mes,
 			Math.round(f.cuota),

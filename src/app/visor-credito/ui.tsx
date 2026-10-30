@@ -7,6 +7,7 @@ import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Input } from "@/components/ui/input";
 import {
+	BaseParams,
 	DestinoAbono,
 	FilaPesos,
 	FilaUVR,
@@ -14,6 +15,14 @@ import {
 	TipoAporte,
 } from "@/lib/credito";
 import { Field, MONO, TIPS, fmt } from "./data";
+
+// Parámetros tal como se usaron en la última simulación. La tira de supuestos
+// lee de aquí, no del formulario: así los números y sus premisas coinciden
+// aunque el usuario ya haya editado un campo.
+export type ParamsSnap = BaseParams & {
+	valorUVR?: number;
+	inflacionEA?: number;
+};
 
 // Popover position:fixed para escapar del clip de los contenedores con scroll.
 // placement decide si el popover va por encima ("top") o por debajo ("bottom").
@@ -100,6 +109,213 @@ export function Stat({
 	);
 }
 
+// Etiquetas legibles para el sistema de amortización.
+const SISTEMA_LABEL: Record<string, string> = {
+	cuotaConstante: "Cuota constante",
+	abonoConstante: "Abono constante",
+};
+
+/**
+ * Tira de supuestos de la corrida visible. Lee del snapshot, así que sigue
+ * siendo cierta aunque el formulario ya tenga otros valores.
+ */
+export function Supuestos({ tab, snap }: { tab: "UVR" | "Pesos"; snap: ParamsSnap }) {
+	const tasaEA = Math.max(0, snap.tasaBaseEA - (snap.descuentoTasa || 0));
+	const items: { k: string; v: string; tip?: string }[] = [
+		{
+			k: "Tasa",
+			v:
+				snap.descuentoTasa > 0
+					? `${snap.tasaBaseEA.toFixed(2)}% − ${snap.descuentoTasa.toFixed(2)}% = ${tasaEA.toFixed(2)}% E.A.`
+					: `${tasaEA.toFixed(2)}% E.A.`,
+			tip: "Tasa efectiva anual. El motor la convierte a mensual con interés compuesto: (1 + E.A.)^(1/12) − 1.",
+		},
+		{
+			k: "Plazo",
+			v: `${snap.plazoAnios} años · ${snap.porcentajeCredito}% financiado`,
+		},
+		{ k: "Sistema", v: SISTEMA_LABEL[snap.sistema] ?? snap.sistema },
+	];
+
+	if (tab === "UVR") {
+		items.push(
+			{
+				k: "Inflación",
+				v: `${(snap.inflacionEA ?? 0).toFixed(1)}% E.A.`,
+				tip: "Supuesto de inflación (IPC) para toda la vida del crédito. Es un escenario, no un pronóstico: la UVR real se certifica cada mes.",
+			},
+			{ k: "UVR inicial", v: fmt(snap.valorUVR ?? 0) },
+		);
+	}
+
+	items.push(
+		{
+			k: "Seguros",
+			v: `vida ${snap.seguroVidaPct}% · hogar ${snap.seguroHogarPct}%`,
+		},
+		{
+			k: "Prepago",
+			v:
+				snap.aporteExtra > 0
+					? `${fmt(snap.aporteExtra)} ${
+							(snap.tipoAporte ?? "unico") === "mensual"
+								? "mensual"
+								: `en el mes ${snap.mesAbono ?? 1}`
+						} · ${(snap.destinoAbono ?? "plazo") === "cuota" ? "baja cuota" : "baja plazo"}`
+					: "Ninguno",
+		},
+	);
+
+	return (
+		<div className="shrink-0 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
+			<div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-3">
+				<h2 className="text-[10px] font-medium uppercase tracking-wider text-gray-500">
+					Supuestos de esta simulación
+				</h2>
+				<span className="text-[10px] text-gray-600">Se fijan al calcular</span>
+			</div>
+			<dl className="flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
+				{items.map((item) => (
+					<div key={item.k} className="flex items-baseline gap-1.5">
+						<dt className="text-gray-500">{item.k}</dt>
+						<dd className="text-gray-300">
+							{item.v}
+							{item.tip && <Tip text={item.tip} />}
+						</dd>
+					</div>
+				))}
+			</dl>
+		</div>
+	);
+}
+
+/**
+ * En UVR la cuota pactada en UVR no cambia, pero la de pesos sí. La frase usa
+ * la corrida SIN prepagos para que el crecimiento sea el de la inflación y no
+ * el efecto de un abono.
+ */
+export function CrecimientoUVR({ base }: { base: Resumen }) {
+	const pct = base.cuota1 > 0 ? (base.cuotaFinal / base.cuota1 - 1) * 100 : 0;
+
+	return (
+		<div className="shrink-0 rounded-lg border border-palette-lime/25 bg-palette-lime/[0.06] px-3 py-2 text-[11px] leading-relaxed text-gray-300">
+			<span className="font-semibold text-palette-lime">
+				La cuota en UVR es fija, pero en pesos crece con la inflación.
+			</span>{" "}
+			Con estos supuestos pagas{" "}
+			<strong className="text-white">{fmt(base.cuota1)}</strong> el mes 1
+			{base.cuotaAnio5 !== null && (
+				<>
+					{" → "}
+					<strong className="text-white">{fmt(base.cuotaAnio5)}</strong> en el
+					año 5
+				</>
+			)}
+			{" → "}
+			<strong className="text-white">{fmt(base.cuotaFinal)}</strong> en la
+			última cuota
+			{pct > 0.5 && (
+				<>
+					{" "}
+					(<span className="font-semibold text-palette-pink">
+						+{Math.round(pct)}%
+					</span>{" "}
+					por inflación)
+				</>
+			)}
+			.
+		</div>
+	);
+}
+
+/** Composición de totalPagado: capital + intereses + seguros + ajuste UVR. */
+export function DesgloseTotal({
+	resumen,
+	tab,
+}: {
+	resumen: Resumen;
+	tab: "UVR" | "Pesos";
+}) {
+	const tieneUVR = tab === "UVR" && resumen.ajusteUVR > 1;
+	const items = [
+		{
+			key: "capital",
+			label: "Capital",
+			value: resumen.montoCOP,
+			cls: "bg-palette-lime",
+		},
+		{
+			key: "interes",
+			label: "Intereses",
+			value: resumen.interesAcum,
+			cls: "bg-palette-pink",
+		},
+		{
+			key: "seguros",
+			label: "Seguros",
+			value: resumen.segurosAcum,
+			cls: "bg-gray-400",
+		},
+		...(tieneUVR
+			? [
+					{
+						key: "uvr",
+						label: "Ajuste UVR",
+						value: resumen.ajusteUVR,
+						cls: "bg-palette-olive",
+					},
+				]
+			: []),
+	];
+	const total = resumen.totalPagado;
+
+	return (
+		<div className="shrink-0 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
+			<div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3">
+				<h2 className="text-[10px] font-medium uppercase tracking-wider text-gray-500">
+					¿En qué se fue el total pagado?
+				</h2>
+				<span className="text-[11px] text-gray-400">
+					Total{" "}
+					<strong className={`text-white ${MONO}`}>{fmt(total)}</strong>
+				</span>
+			</div>
+			<div className="flex h-2 w-full overflow-hidden rounded-full bg-white/10">
+				{items.map((item) => (
+					<span
+						key={item.key}
+						className={item.cls}
+						style={{ width: `${total > 0 ? (item.value / total) * 100 : 0}%` }}
+						title={`${item.label}: ${fmt(item.value)}`}
+					/>
+				))}
+			</div>
+			<dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] sm:grid-cols-4">
+				{items.map((item) => (
+					<div
+						key={item.key}
+						className="flex items-baseline justify-between gap-2"
+					>
+						<dt className="flex items-center gap-1.5 text-gray-500">
+							<span className={`h-2 w-2 shrink-0 rounded-full ${item.cls}`} />
+							{item.label}
+						</dt>
+						<dd className={`text-right text-gray-300 ${MONO}`}>
+							{fmt(item.value)}
+						</dd>
+					</div>
+				))}
+			</dl>
+			{tieneUVR && (
+				<p className="mt-1.5 text-[10px] leading-snug text-gray-500">
+					El ajuste UVR es lo que suma el capital por la indexación: pagas en
+					pesos la UVR de cada mes, no la del día en que firmaste.
+				</p>
+			)}
+		</div>
+	);
+}
+
 export function FormFields({
 	fields,
 	values,
@@ -173,11 +389,11 @@ export type Col<F> = {
 export const COLS_UVR: Col<FilaUVR>[] = [
 	{ h: "Mes", mo: true, cell: (f) => String(f.mes) },
 	{ h: "Valor UVR", tip: TIPS.uvr, num: true, cell: (f) => f.uvr.toFixed(2) },
-	{ h: "Cuota (UVR)", tip: "Cuota exigida en UVR. Constante en 'Cuota Constante', salvo que el aporte se destine a reducir cuota.", num: true, cell: (f) => f.cuotaUVR.toFixed(2) },
+	{ h: "Cuota (UVR)", tip: "Cuota exigida en UVR. Constante en 'Cuota Constante', salvo que el prepago se destine a reducir cuota.", num: true, cell: (f) => f.cuotaUVR.toFixed(2) },
 	{ h: "Interés (UVR)", tip: TIPS.interesUVR, num: true, cell: (f) => f.interesUVR.toFixed(2) },
-	{ h: "Abono (UVR)", tip: TIPS.abonoUVR, num: true, cell: (f) => f.abonoCapitalUVR.toFixed(2) },
+	{ h: "Capital (UVR)", tip: TIPS.capital, num: true, cell: (f) => f.abonoCapitalUVR.toFixed(2) },
 	{ h: "Saldo (UVR)", tip: TIPS.saldoUVR, num: true, cell: (f) => f.saldoUVR.toFixed(2) },
-	{ h: "Aporte (COP)", tip: TIPS.extra, num: true, mo: true, cell: (f) => fmt(f.aporteExtraCOP) },
+	{ h: "Prepago (COP)", tip: TIPS.prepago, num: true, mo: true, cell: (f) => fmt(f.aporteExtraCOP) },
 	{ h: "Seguros (COP)", tip: TIPS.seguros, num: true, cell: (f) => fmt(f.segurosCOP) },
 	{ h: "Cuota Total", tip: TIPS.cuotaTotal, num: true, mo: true, cell: (f) => fmt(f.cuotaTotalCOP) },
 	{ h: "Saldo (COP)", tip: TIPS.saldoCOP, num: true, cell: (f) => fmt(f.saldoCOP) },
@@ -187,7 +403,7 @@ export const COLS_PESOS: Col<FilaPesos>[] = [
 	{ h: "Mes", mo: true, cell: (f) => String(f.mes) },
 	{
 		h: "Cuota (COP)",
-		tip: "Cuota exigida (sistema francés). Constante todo el crédito, salvo que el aporte se destine a reducir cuota.",
+		tip: "Cuota exigida (sistema francés). Constante todo el crédito, salvo que el prepago se destine a reducir cuota.",
 		num: true,
 		cell: (f) => fmt(f.cuota),
 	},
@@ -197,18 +413,18 @@ export const COLS_PESOS: Col<FilaPesos>[] = [
 		num: true,
 		cell: (f) => fmt(f.interes),
 	},
-	{ h: "Abono (COP)", tip: TIPS.abonoUVR, num: true, cell: (f) => fmt(f.abonoCapital) },
+	{ h: "Capital (COP)", tip: TIPS.capital, num: true, cell: (f) => fmt(f.abonoCapital) },
 	{
 		h: "Saldo (COP)",
-		tip: "Deuda pendiente tras el pago del mes: saldo anterior − abono − extra. Base del interés del mes siguiente.",
+		tip: "Deuda pendiente tras el pago del mes: saldo anterior − capital − prepago. Base del interés del mes siguiente.",
 		num: true,
 		cell: (f) => fmt(f.saldo),
 	},
-	{ h: "Aporte (COP)", tip: TIPS.extra, num: true, mo: true, cell: (f) => fmt(f.aporteExtraCOP) },
+	{ h: "Prepago (COP)", tip: TIPS.prepago, num: true, mo: true, cell: (f) => fmt(f.aporteExtraCOP) },
 	{ h: "Seguros (COP)", tip: TIPS.seguros, num: true, cell: (f) => fmt(f.segurosCOP) },
 	{
 		h: "Cuota Total",
-		tip: "Lo que pagas este mes: cuota + aporte extra + seguros. Suma el 'Total Pagado' del resumen.",
+		tip: "Lo que pagas este mes: cuota + prepago + seguros. Suma el 'Total Pagado' del resumen.",
 		num: true,
 		mo: true,
 		cell: (f) => fmt(f.cuotaTotalCOP),
@@ -254,11 +470,11 @@ export function ComparativaAbonos({
 		<div className="shrink-0 rounded-lg border border-white/10 bg-white/[0.03] p-3">
 			<div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
 				<h2 className="text-[11px] font-medium uppercase tracking-wider text-gray-400">
-					Efecto del aporte de {fmt(aporte)}
+					Efecto del prepago de {fmt(aporte)}
 					{tipo === "unico" ? ` en el mes ${mesAbono}` : " cada mes"}
 				</h2>
 				<p className="text-[11px] text-gray-500">
-					Sin abono: intereses {fmt(base.interesAcum)} · fin{" "}
+					Sin prepago: intereses {fmt(base.interesAcum)} · fin{" "}
 					{finTexto(base.finCreditoMes)}
 				</p>
 			</div>
@@ -317,9 +533,9 @@ export function ComparativaAbonos({
 			</div>
 			{tipo === "mensual" && destino === "cuota" && (
 				<p className="mt-2 text-[11px] leading-snug text-gray-500">
-					Con aportes mensuales la cuota exigida baja cada mes y el crédito
+					Con prepagos mensuales la cuota exigida baja cada mes y el crédito
 					también puede cerrarse antes: el ahorro depende de que mantengas el
-					aporte.
+					prepago.
 				</p>
 			)}
 		</div>

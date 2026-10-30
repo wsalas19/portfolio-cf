@@ -69,7 +69,34 @@ test("pesos · los totales son coherentes (se paga más que el principal)", () =
 	assert.ok(resumen.totalPagado - resumen.interesAcum >= MONTO * 0.98);
 });
 
-test("pesos · abono constante: el abono a capital no cambia mes a mes", () => {
+test("pesos · cuota inicial y última cuota no incluyen el prepago", () => {
+	const sinPrepago = simularPesos(PESOS).resumen;
+	const conPrepagoMes1 = simularPesos({
+		...PESOS,
+		aporteExtra: 20_000_000,
+		tipoAporte: "unico",
+		mesAbono: 1,
+	}).resumen;
+
+	assert.ok(
+		Math.abs(conPrepagoMes1.mensualidad1 - sinPrepago.cuota1) < 20_000,
+		"la mensualidad no incluye los $20M; solo cambia el seguro de vida sobre el saldo menor",
+	);
+	assert.ok(conPrepagoMes1.cuota1 > conPrepagoMes1.mensualidad1 + 19_000_000);
+	assert.ok(conPrepagoMes1.mensualidadFinal <= sinPrepago.cuotaFinal);
+});
+
+test("pesos · el desglose del total pagado cuadra y no tiene ajuste UVR", () => {
+	const { resumen } = simularPesos(APORTE_UNICO);
+	const suma =
+		resumen.montoCOP + resumen.interesAcum + resumen.segurosAcum + resumen.ajusteUVR;
+
+	assert.ok(Math.abs(suma - resumen.totalPagado) < 1, "capital + interés + seguros = total");
+	assert.ok(resumen.segurosAcum > 0);
+	assert.equal(resumen.ajusteUVR, 0);
+});
+
+test("pesos · un abono constante: el abono a capital no cambia mes a mes", () => {
 	const { filas } = simularPesos({ ...PESOS, sistema: "abonoConstante" });
 	const abono = filas[0].abonoCapital;
 
@@ -247,6 +274,20 @@ test("uvr · reducir cuota baja la cuota en UVR y conserva el plazo", () => {
 	assert.ok(plano.resumen.interesAcum < cuota.resumen.interesAcum);
 	assert.ok(cuota.resumen.reduccionCuotaPct > 0.03);
 	assert.equal(cuota.filas.at(-1).saldoUVR, 0);
+});
+
+test("uvr · el desglose del total incluye el ajuste por indexación", () => {
+	const { resumen } = simularUVR(UVR);
+	const suma =
+		resumen.montoCOP + resumen.interesAcum + resumen.segurosAcum + resumen.ajusteUVR;
+
+	assert.ok(Math.abs(suma - resumen.totalPagado) < 1, "capital + interés + seguros + ajuste = total");
+	assert.ok(resumen.segurosAcum > 0);
+	assert.ok(resumen.ajusteUVR > 0, "con inflación positiva el capital pagado supera el prestado");
+
+	// Sin inflación no hay ajuste real: solo el redondeo.
+	const sinInflacion = simularUVR({ ...UVR, inflacionEA: 0 }).resumen;
+	assert.ok(Math.abs(sinInflacion.ajusteUVR) < 1);
 });
 
 test("uvr · compararUVR devuelve las tres variantes", () => {

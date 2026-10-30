@@ -2,7 +2,7 @@
 
 import { useReducer } from "react";
 import Link from "next/link";
-import { Banknote, Calculator, FileDown, Landmark } from "lucide-react";
+import { AlertTriangle, Banknote, Calculator, FileDown, Landmark, RotateCcw } from "lucide-react";
 import {
 	BaseParams,
 	Comparativa,
@@ -32,9 +32,13 @@ import {
 	COLS_PESOS,
 	COLS_UVR,
 	ComparativaAbonos,
+	CrecimientoUVR,
+	DesgloseTotal,
 	FormFields,
+	ParamsSnap,
 	Resultados,
 	Stat,
+	Supuestos,
 } from "./ui";
 
 type Comp = {
@@ -48,34 +52,39 @@ type Comp = {
 
 type Tab = "UVR" | "Pesos";
 
-/** Resultado de una pestaña: la simulación visible y su comparativa de abonos. */
+/** Resultado de una pestaña: la simulación visible, su comparativa y los
+ * parámetros exactos con los que se corrió (para la tira de supuestos). */
 type Sim<F> = {
 	result: Simulacion<F> | null;
 	comp: Comp | null;
+	snap: ParamsSnap | null;
 };
 
 type State = {
 	tab: Tab;
 	values: Record<Tab, Record<string, string>>;
 	sims: { UVR: Sim<FilaUVR>; Pesos: Sim<FilaPesos> };
+	// Hay cambios en el formulario posteriores a la última corrida de esa pestaña.
+	dirty: Record<Tab, boolean>;
 	error: string | null;
 };
 
 type Action =
 	| { type: "tab/changed"; tab: Tab }
 	| { type: "field/changed"; id: string; value: string }
-	| { type: "uvr/calculated"; result: Simulacion<FilaUVR>; comp: Comp }
-	| { type: "pesos/calculated"; result: Simulacion<FilaPesos>; comp: Comp }
+	| { type: "uvr/calculated"; result: Simulacion<FilaUVR>; comp: Comp; snap: ParamsSnap }
+	| { type: "pesos/calculated"; result: Simulacion<FilaPesos>; comp: Comp; snap: ParamsSnap }
 	| { type: "simulation/failed"; message: string };
 
 function emptySim<F>(): Sim<F> {
-	return { result: null, comp: null };
+	return { result: null, comp: null, snap: null };
 }
 
 const INITIAL_STATE: State = {
 	tab: "UVR",
 	values: { UVR: UVR_DEFAULTS, Pesos: PESOS_DEFAULTS },
 	sims: { UVR: emptySim<FilaUVR>(), Pesos: emptySim<FilaPesos>() },
+	dirty: { UVR: false, Pesos: false },
 	error: null,
 };
 
@@ -92,6 +101,7 @@ function reducer(state: State, action: Action): State {
 				? state
 				: { ...state, tab: action.tab, error: null };
 		case "field/changed":
+			if (state.values[state.tab][action.id] === action.value) return state;
 			return {
 				...state,
 				values: {
@@ -101,17 +111,34 @@ function reducer(state: State, action: Action): State {
 						[action.id]: action.value,
 					},
 				},
+				dirty: { ...state.dirty, [state.tab]: true },
 			};
 		case "uvr/calculated":
 			return {
 				...state,
-				sims: { ...state.sims, UVR: { result: action.result, comp: action.comp } },
+				sims: {
+					...state.sims,
+					UVR: {
+						result: action.result,
+						comp: action.comp,
+						snap: action.snap,
+					},
+				},
+				dirty: { ...state.dirty, UVR: false },
 				error: null,
 			};
 		case "pesos/calculated":
 			return {
 				...state,
-				sims: { ...state.sims, Pesos: { result: action.result, comp: action.comp } },
+				sims: {
+					...state.sims,
+					Pesos: {
+						result: action.result,
+						comp: action.comp,
+						snap: action.snap,
+					},
+				},
+				dirty: { ...state.dirty, Pesos: false },
 				error: null,
 			};
 		case "simulation/failed":
@@ -123,7 +150,7 @@ function reducer(state: State, action: Action): State {
 function simulated<P extends BaseParams, F>(
 	params: P,
 	c: Comparativa<F>,
-): { result: Simulacion<F>; comp: Comp } {
+): { result: Simulacion<F>; comp: Comp; snap: ParamsSnap } {
 	return {
 		result: params.destinoAbono === "cuota" ? c.cuota : c.plazo,
 		comp: {
@@ -138,6 +165,7 @@ function simulated<P extends BaseParams, F>(
 			mesAbono: params.mesAbono ?? 1,
 			sistema: params.sistema,
 		},
+		snap: { ...params },
 	};
 }
 
@@ -149,12 +177,12 @@ export default function CreditoSimulator() {
 		try {
 			if (state.tab === "UVR") {
 				const params = uvrParamsFrom(state.values.UVR);
-				const { result, comp } = simulated(params, compararUVR(params));
-				dispatch({ type: "uvr/calculated", result, comp });
+				const { result, comp, snap } = simulated(params, compararUVR(params));
+				dispatch({ type: "uvr/calculated", result, comp, snap });
 			} else {
 				const params = pesosParamsFrom(state.values.Pesos);
-				const { result, comp } = simulated(params, compararPesos(params));
-				dispatch({ type: "pesos/calculated", result, comp });
+				const { result, comp, snap } = simulated(params, compararPesos(params));
+				dispatch({ type: "pesos/calculated", result, comp, snap });
 			}
 		} catch (e) {
 			dispatch({
@@ -167,8 +195,13 @@ export default function CreditoSimulator() {
 	const active = state.sims[state.tab];
 	const r = active.result;
 	const comp = active.comp;
+	const snap = active.snap;
+	const dirty = state.dirty[state.tab];
 	const fin = r
-		? `Mes ${r.resumen.finCreditoMes} (${Math.floor(r.resumen.finCreditoMes / 12)}a ${r.resumen.finCreditoMes % 12}m)`
+		? `Mes ${r.resumen.finCreditoMes}`
+		: "";
+	const finDetalle = r
+		? `${Math.floor(r.resumen.finCreditoMes / 12)}a ${r.resumen.finCreditoMes % 12}m`
 		: "";
 
 	return (
@@ -179,7 +212,7 @@ export default function CreditoSimulator() {
 						Visor de Crédito Hipotecario Colombia
 					</h1>
 					<p className="mt-2 text-sm text-gray-400">
-						Proyección de amortización, seguros y abonos a capital · Ley
+						Proyección de amortización, seguros y prepagos a capital · Ley
 						546/1999 · Tasas referencia FNA
 					</p>
 				</header>
@@ -223,10 +256,14 @@ export default function CreditoSimulator() {
 							<Button
 								variant="green"
 								onClick={calcular}
-								className="justify-center"
+								className={`justify-center ${
+									dirty && r
+										? "ring-2 ring-palette-lime ring-offset-2 ring-offset-palette-card"
+										: ""
+								}`}
 							>
 								<Calculator size={16} />
-								Calcular
+								{dirty && r ? "Recalcular" : "Calcular"}
 							</Button>
 							{r && (
 								<button
@@ -254,12 +291,35 @@ export default function CreditoSimulator() {
 					<section className="flex min-h-0 flex-col gap-4 lg:overflow-y-auto">
 						{!r ? (
 							<div className="flex min-h-[200px] md:min-h-0 flex-1 items-center justify-center rounded-lg border border-dashed border-white/10 text-sm text-gray-500">
-								Configura los parámetros y presiona “Calcular Proyección”.
+								Configura los parámetros y presiona “Calcular”.
 							</div>
 						) : (
 							<>
+								{dirty && (
+									<div className="flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-lg border border-palette-pink/40 bg-palette-pink/10 px-3 py-2 text-xs text-palette-pink">
+										<span className="flex items-center gap-2">
+											<AlertTriangle size={14} className="shrink-0" />
+											Cambiaste los parámetros: los resultados de abajo son
+											de la simulación anterior.
+										</span>
+										<button
+											onClick={calcular}
+											className="flex items-center gap-1.5 rounded-md border border-palette-pink/50 px-2.5 py-1 font-medium transition-colors hover:bg-palette-pink/15"
+										>
+											<RotateCcw size={12} />
+											Recalcular
+										</button>
+									</div>
+								)}
+
+								{snap && <Supuestos tab={tab} snap={snap} />}
+
 								{/* Stats compactos */}
-								<div className="shrink-0 grid grid-cols-2 gap-2 lg:grid-cols-7">
+								<div
+									className={`shrink-0 grid grid-cols-2 gap-2 ${
+										tab === "UVR" ? "lg:grid-cols-6" : "lg:grid-cols-5"
+									}`}
+								>
 									<Stat
 										label="Monto a Financiar"
 										value={fmt(r.resumen.montoCOP)}
@@ -270,35 +330,48 @@ export default function CreditoSimulator() {
 										}
 										accent="border-l-palette-pink"
 									/>
+									{tab === "UVR" && (
+										<Stat
+											label="Cuota Año 5"
+											value={
+												r.resumen.cuotaAnio5 !== null
+													? fmt(r.resumen.cuotaAnio5)
+													: r.resumen.cuotaAnio5Nota
+											}
+											tip="Cuota del mes 60 en pesos de ese mes: incluye el efecto de la inflación."
+										/>
+									)}
 									<Stat
-										label="Tasa Efectiva Aplicada"
-										value={`${r.resumen.tasaEA.toFixed(2)}% EA`}
+										label="Cuota inicial"
+										value={fmt(r.resumen.mensualidad1)}
+										tip="Cuota del mes 1 con seguros, sin contar prepagos."
 									/>
-									<Stat label="Cuota Mes 1" value={fmt(r.resumen.cuota1)} />
 									<Stat
-										label="Cuota Año 5"
-										value={
-											r.resumen.cuotaAnio5 !== null
-												? fmt(r.resumen.cuotaAnio5)
-												: r.resumen.cuotaAnio5Nota
-										}
+										label="Última cuota"
+										value={fmt(r.resumen.mensualidadFinal)}
+										tip="Cuota del último mes simulado con seguros, sin contar prepagos."
 									/>
-									<Stat label="Cuota Final" value={fmt(r.resumen.cuotaFinal)} />
 									<Stat
 										label="Fin del Crédito"
 										value={fin}
-										sub={r.resumen.finNota}
+										sub={finDetalle}
+										tip={r.resumen.finNota}
 										accent="border-l-palette-olive"
 									/>
 									<Stat
 										label="Total Pagado"
 										value={fmt(r.resumen.totalPagado)}
-										sub={`Incluye ${fmt(r.resumen.interesAcum)} de intereses`}
 										accent="border-l-palette-lime"
 										tip={tab === "UVR" ? TIPS.totalPagado : TIPS.totalPagadoPesos}
 										tipPlacement="bottom"
 									/>
 								</div>
+
+								{tab === "UVR" && comp && (
+									<CrecimientoUVR base={comp.resumenes.sinAbono} />
+								)}
+
+								<DesgloseTotal resumen={r.resumen} tab={tab} />
 
 								{comp && comp.aporte > 0 && (
 									<ComparativaAbonos
