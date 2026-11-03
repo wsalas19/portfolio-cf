@@ -122,6 +122,18 @@ export const es: LandingCopy = {
 				"3 archivos modificados, +303/−392",
 			],
 		},
+		"nectar-tint": {
+			title: "Nectar — Contribución OSS",
+			description:
+				"Contribución de código abierto a Nectar, una app GPLv3 de notch y dock para Windows: porté la extracción de paleta de la portada de Frieda Player para que el panel de música se tiña con la carátula actual.",
+			highlights: [
+				"Mergeado en una app GPLv3 para Windows",
+				"Porté el algoritmo de paleta de Frieda Player",
+				"Contraste de texto automático (WCAG 4.5:1)",
+				"Ajuste opcional, desactivado por defecto",
+				"9 archivos modificados, +284/−6",
+			],
+		},
 	},
 	serviceTracks: {
 		landing: {

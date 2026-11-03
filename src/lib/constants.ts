@@ -142,8 +142,8 @@ export const jobs: JobSeed[] = [
 	},
 ];
 // El orden es el que ve el visitante: primero el trabajo propio y público (que se
-// puede abrir y verificar), después el trabajo de cliente y, al final, la
-// contribución a un proyecto de otro.
+// puede abrir y verificar), después el trabajo de cliente y, al final, las
+// contribuciones a proyectos de otros.
 // Se quitaron Hunt Club Portal y Office Supplies Manager: los dos son software
 // privado sin nada público que enlazar (Hunt Club solo lo abren socios; del otro
 // no hay más material), y una tarjeta sin botón es un callejón sin salida que
@@ -207,6 +207,14 @@ export const projects: ProjectSeed[] = [
 		// que el código entró.
 		githubUrl: "https://github.com/al1abb/invoify/pull/664",
 		imageUrl: "/images/invoify.png",
+	},
+	{
+		slug: "nectar-tint",
+		technologies: ["TypeScript", "React", "CSS", "Canvas 2D"],
+		// Mismo criterio que Invoify: el enlace va al PR mergeado, que es la prueba
+		// pública del aporte y deja el repo a un clic.
+		githubUrl: "https://github.com/kua8/Nectar/pull/74",
+		imageUrl: "/images/nectar.png",
 	},
 ];
 

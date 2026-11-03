@@ -26,10 +26,10 @@ async function Stats({ copy, profile, projects }: StatsProps) {
 	// ponytail: umbral a ojo; si el blog pasa de tres posts, esta rama muere sola.
 	const stats = [
 		{ value: `${years}`, label: copy.stats.years, href: "#experience" },
-		// "Projects and tools" y no "Public projects & tools": los seis incluyen una
-		// contribución a un repo ajeno y un portal privado, así que "public" no era
-		// cierto para todos. "Studies published" tampoco: un estudio es Barranquilla
-		// Verde; los otros cinco son artículos.
+		// "Projects and tools" y no "Public projects & tools": la lista incluye
+		// contribuciones a repos de otros y un portal privado, así que "public" no
+		// aplica a todas. "Studies published" tampoco: un estudio es Barranquilla
+		// Verde; el resto son herramientas y artículos.
 		{ value: `${projects.length}`, label: copy.stats.projects, href: "#projects" },
 		postCount >= 3
 			? { value: `${postCount}`, label: copy.stats.articles, href: "/blog" }
