@@ -133,7 +133,7 @@ export const en: LandingCopy = {
 	serviceTracks: {
 		landing: {
 			eyebrow: "No website yet",
-			title: "One-page website, ready for search",
+			title: "Starter Site",
 			description:
 				"A single page that presents your business, explains what you sell and lets visitors contact you. I build it with the simplest tool that fits the job, so it stays fast and cheap to host.",
 			items: [
@@ -146,7 +146,7 @@ export const en: LandingCopy = {
 		},
 		build: {
 			eyebrow: "Established business",
-			title: "Custom tool or technical review",
+			title: "Custom Build",
 			description:
 				"For work that needs software: a portal, an internal tool, an API, or a new feature on a product you already run. We agree the scope in writing before the work starts.",
 			items: [
@@ -158,7 +158,7 @@ export const en: LandingCopy = {
 		},
 		partner: {
 			eyebrow: "Ongoing",
-			title: "Monthly development retainer",
+			title: "Growth Retainer",
 			description:
 				"A fixed number of development days each month for continued work on your product. We agree the priorities at the start of each month.",
 			items: [

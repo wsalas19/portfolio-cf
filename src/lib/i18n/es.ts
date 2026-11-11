@@ -138,7 +138,7 @@ export const es: LandingCopy = {
 	serviceTracks: {
 		landing: {
 			eyebrow: "Sin página web",
-			title: "Página web de una sola vista, lista para buscadores",
+			title: "Sitio inicial",
 			description:
 				"Una página que presenta tu negocio, explica qué vendes y permite que te contacten. La construyo con la herramienta más simple que sirva, para que cargue rápido y sea económica de mantener.",
 			items: [
@@ -151,7 +151,7 @@ export const es: LandingCopy = {
 		},
 		build: {
 			eyebrow: "Negocio establecido",
-			title: "Herramienta a la medida o revisión técnica",
+			title: "Desarrollo a la medida",
 			description:
 				"Para trabajo que necesita software: un portal, una herramienta interna, una API o una funcionalidad nueva sobre un producto que ya tienes. Acordamos el alcance por escrito antes de empezar.",
 			items: [
@@ -163,7 +163,7 @@ export const es: LandingCopy = {
 		},
 		partner: {
 			eyebrow: "Continuo",
-			title: "Retainer mensual de desarrollo",
+			title: "Plan de crecimiento",
 			description:
 				"Una cantidad fija de días de desarrollo al mes para trabajo continuo sobre tu producto. Acordamos las prioridades al inicio de cada mes.",
 			items: [

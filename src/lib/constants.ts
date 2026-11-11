@@ -228,7 +228,7 @@ export const gradientColors = ["#d4ff4d", "#a2a206", "#2e3320", "#fb8983"];
 // ajustado al mercado local. Por eso están escritos a mano y no calculados. El
 // retainer es el único con `cta: "calendar"`: se acota en una llamada.
 export const serviceTracks: ServiceTrackSeed[] = [
-	{ id: "landing", price: { usd: 500, cop: 1_500_000 } },
+	{ id: "landing", price: { usd: 500, cop: 520_000 } },
 	{ id: "build", price: { usd: 2_500, cop: 7_500_000 }, priceFrom: true },
 	{
 		id: "partner",
