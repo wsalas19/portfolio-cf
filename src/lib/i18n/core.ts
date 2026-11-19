@@ -40,7 +40,10 @@ const CORE: Record<Locale, CoreCopy> = {
 		chrome: {
 			menuOpen: "Open menu",
 			menuClose: "Close menu",
-			bookMeeting: "Book a Meeting",
+			// Una acción, un nombre: el hero y la banda de CTA dicen "Book a call"
+			// (`hero.bookACall`). "Book a Meeting" era la misma acción con otro
+			// nombre a tres centímetros de distancia.
+			bookMeeting: "Book a call",
 			backToTop: "Back to Top",
 			downloadCv: "Download CV",
 			downloading: "Downloading",
@@ -70,7 +73,8 @@ const CORE: Record<Locale, CoreCopy> = {
 		chrome: {
 			menuOpen: "Abrir menú",
 			menuClose: "Cerrar menú",
-			bookMeeting: "Agenda una reunión",
+			// Ver `en.chrome.bookMeeting`: mismo nombre que en el hero.
+			bookMeeting: "Agenda una llamada",
 			backToTop: "Volver arriba",
 			downloadCv: "Descargar CV",
 			downloading: "Descargando",

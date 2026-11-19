@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import ExperienceCard from "./ExperienceCard";
+import { SectionHeading } from "./SectionHeading";
 import { Button } from "./ui/button";
 import { PROFILE } from "@/lib/constants";
 import { ChevronDown, ChevronUp } from "lucide-react";
@@ -28,8 +29,15 @@ function Experience({ copy, jobs }: ExperienceProps) {
 	const visibleJobs = isExpanded ? jobs : jobs.slice(0, 2);
 
 	return (
-		<div id="experience" className="py-20 md:py-32">
+		<section id="experience" className="py-20 md:py-32">
 			<div className="container-page">
+				{/* La nav enlaza a `#experience` desde `paths`, así que la sección
+				    necesitaba un título: sin él el enlace aterrizaba en una línea de
+				    tiempo anónima y no se sabía si se había llegado a algo nuevo. */}
+				<SectionHeading
+					eyebrow={copy.experienceSection.eyebrow}
+					title={copy.experienceSection.title}
+				/>
 				{/* Timeline */}
 				<div className="flex justify-center">
 					<div className="w-[80%] md:w-full max-w-4xl">
@@ -37,9 +45,9 @@ function Experience({ copy, jobs }: ExperienceProps) {
 							{visibleJobs.map((job, index) => (
 								<li
 									key={job.company}
-									className={`transform transition-all duration-500
-                    ${activeIndex === index ? "scale-105" : "scale-100"}
-                    hover:scale-[1.02]`}
+									// La escala quedaba en el <li>, que mide todo el ancho de la
+									// columna: 5% de eso es un salto de decenas de píxeles.
+									// El énfasis lo da `ExperienceCard` sobre el contenido.
 									onMouseEnter={() => setActiveIndex(index)}
 									onMouseLeave={() => setActiveIndex(null)}
 								>
@@ -49,11 +57,13 @@ function Experience({ copy, jobs }: ExperienceProps) {
 
 							{/* Starting Year Marker */}
 							{/* El origen del timeline, subordinado a los títulos de puesto: antes
-							    iba en text-2xl, el mismo tamaño que "Full Stack Developer". */}
+							    iba en text-2xl, el mismo tamaño que "Full Stack Developer". Un
+							    año suelto no dice nada; con la etiqueta se lee como el inicio
+							    de la trayectoria. */}
 							<li className="ms-8 text-lg font-semibold text-gray-400">
 								{/* Derivado y no escrito: es el mismo número que `Stats` usa
 								    para contar los años, y dos copias se desincronizan. */}
-								{PROFILE.experienceStart}
+								{copy.experienceSection.startLabel} {PROFILE.experienceStart}
 							</li>
 						</ol>
 
@@ -84,7 +94,7 @@ function Experience({ copy, jobs }: ExperienceProps) {
 					</div>
 				</div>
 			</div>
-		</div>
+		</section>
 	);
 }
 

@@ -39,17 +39,27 @@ const SITE_KEY =
 
 export function Turnstile({
 	onToken,
+	onError,
 }: {
 	onToken: (token: string | null) => void;
+	/** El widget no cargó o falló. Sin esto el formulario quedaba cerrado en silencio. */
+	onError?: () => void;
 }) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const widgetRef = useRef<string | null>(null);
 	const callbackRef = useRef(onToken);
 	callbackRef.current = onToken;
+	// `onError` es opcional y puede cambiar entre renders; el ref mantiene el
+	// callback del efecto apuntando al último sin volver a montar el widget.
+	const errorRef = useRef(onError);
+	errorRef.current = onError;
 
 	useEffect(() => {
 		let cancelled = false;
 		let timer: number | undefined;
+		// Si el script no llega o el widget nunca se renderiza, a los 12s se avisa:
+		// antes el botón quedaba deshabilitado y nadie sabía por qué.
+		let watchdog: number | undefined = undefined;
 
 		const render = () => {
 			if (
@@ -69,8 +79,14 @@ export function Turnstile({
 				action: "contact",
 				callback: (token) => callbackRef.current(token),
 				"expired-callback": () => callbackRef.current(null),
-				"error-callback": () => callbackRef.current(null),
+				"error-callback": () => {
+					callbackRef.current(null);
+					errorRef.current?.();
+				},
 			});
+			if (widgetRef.current && watchdog) {
+				window.clearTimeout(watchdog);
+			}
 		};
 
 		let script = document.querySelector<HTMLScriptElement>(
@@ -93,9 +109,14 @@ export function Turnstile({
 			timer = window.setTimeout(render, 1000);
 		}
 
+		watchdog = window.setTimeout(() => {
+			if (!widgetRef.current) errorRef.current?.();
+		}, 12000);
+
 		return () => {
 			cancelled = true;
 			if (timer) window.clearTimeout(timer);
+			if (watchdog) window.clearTimeout(watchdog);
 			script?.removeEventListener("load", render);
 			if (widgetRef.current) {
 				window.turnstile?.remove(widgetRef.current);

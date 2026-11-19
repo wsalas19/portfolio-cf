@@ -483,7 +483,7 @@ export default function AdminPanel() {
 				</div>
 			</header>
 
-			<div className="mx-auto grid max-w-[1600px] gap-6 px-4 py-6 lg:grid-cols-[260px_1fr] sm:px-6">
+			<div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-6 px-4 py-6 lg:grid-cols-[260px_minmax(0,1fr)] sm:px-6">
 				<aside className="lg:sticky lg:top-20 lg:self-start">
 					<div className="custom-scrollbar max-h-[38vh] space-y-5 overflow-y-auto rounded-2xl border border-white/10 bg-white/[0.02] p-4 lg:max-h-[calc(100vh-13rem)]">
 						{GROUPS.map(({ kind, label, icon: Icon }) => {

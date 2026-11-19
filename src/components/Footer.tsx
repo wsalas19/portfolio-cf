@@ -58,7 +58,7 @@ function Footer() {
 		// y taparía el crédito y el wordmark.
 		<footer className="relative mt-10 border-t border-white/10 pb-28 md:pb-32">
 			<div className="container-page pt-14">
-				<div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+				<div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
 					<div className="lg:col-span-1">
 						<p className="font-display text-lg font-bold text-white">{PROFILE.name}</p>
 						<p className="mt-3 max-w-xs text-sm leading-relaxed text-gray-400">
@@ -134,7 +134,7 @@ function Footer() {
 				{/* Tres pistas [1fr auto 1fr]: la columna central mide lo suyo y las
 				    laterales se reparten el resto en partes iguales, así el crédito de
 				    build queda centrado aunque el copyright y el idioma midan distinto. */}
-				<div className="mt-12 flex flex-col items-center gap-3 border-t border-white/10 pt-6 text-center text-xs text-gray-500 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center sm:text-left">
+				<div className="mt-12 flex flex-col items-center gap-3 border-t border-white/10 pt-6 text-center text-xs text-gray-400 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center sm:text-left">
 					<p>
 						© {new Date().getFullYear()} {PROFILE.name}. {copy.footer.rights}
 					</p>

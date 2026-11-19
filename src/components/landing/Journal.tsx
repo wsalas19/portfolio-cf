@@ -22,7 +22,7 @@ async function Journal({ copy }: { copy: LandingCopy }) {
 					description={copy.journalSection.description}
 				/>
 
-				<div className="grid gap-6 md:grid-cols-2">
+				<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
 					{posts.map((post) => (
 						<BlogCard key={post.slug} post={post} labels={copy.blogCard} />
 					))}

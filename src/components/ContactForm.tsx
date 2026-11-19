@@ -34,6 +34,11 @@ function buildFormSchema(copy: LandingCopy) {
 function ContactForm({ copy }: { copy: LandingCopy }) {
 	const { toast } = useToast();
 	const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+	// `pending` mientras Cloudflare resuelve, `failed` si el widget no cargó. Sin
+	// estos dos estados el botón nacía deshabilitado y parecía roto.
+	const [turnstileStatus, setTurnstileStatus] = useState<
+		"pending" | "ready" | "failed"
+	>("pending");
 	const [turnstileKey, setTurnstileKey] = useState(0);
 	const formSchema = buildFormSchema(copy);
 	const form = useForm<z.infer<ReturnType<typeof buildFormSchema>>>({
@@ -55,7 +60,9 @@ function ContactForm({ copy }: { copy: LandingCopy }) {
 		if (!turnstileToken) {
 			toast({
 				title: copy.contact.errorTitle,
-				description: copy.contact.errorBody,
+				// Específico y no "algo salió mal": sin token, el camino real es el
+				// correo directo, y eso hay que decirlo.
+				description: copy.contact.turnstileErrorBody,
 				variant: "destructive",
 			});
 			return;
@@ -82,6 +89,7 @@ function ContactForm({ copy }: { copy: LandingCopy }) {
 
 			form.reset();
 			setTurnstileToken(null);
+			setTurnstileStatus("pending");
 			setTurnstileKey((key) => key + 1);
 			toast({
 				title: copy.contact.thanks.replace("{name}", values.name),
@@ -91,6 +99,7 @@ function ContactForm({ copy }: { copy: LandingCopy }) {
 			});
 		} catch (error) {
 			setTurnstileToken(null);
+			setTurnstileStatus("pending");
 			setTurnstileKey((key) => key + 1);
 			toast({
 				title: copy.contact.errorTitle,
@@ -110,13 +119,18 @@ function ContactForm({ copy }: { copy: LandingCopy }) {
 			<div className="container-page">
 				{/* Single Unified Card */}
 				<div className="glass-strong rise [--rise-delay:200ms] rounded-2xl border border-white/10 shadow-2xl overflow-hidden glow-pink-hover">
-					<div className="grid lg:grid-cols-2">
+					{/* `grid-cols-1` explícito: sin él la columna implícita se dimensiona a
+					    `minmax(min-content, max-content)` y el widget de Turnstile, que mide
+					    300px y no se encoge, la empujaba a 364px dentro de una tarjeta de
+					    343px. Con `minmax(0,1fr)` la pista mide lo que mide la tarjeta.
+					    `p-5` en móvil deja 303px de contenido: justo lo que pide el widget. */}
+					<div className="grid grid-cols-1 lg:grid-cols-2">
 						{/* Left Section - Contact Info */}
 						<div
-							className="p-8 lg:p-12 rise [--rise-delay:400ms] bg-gradient-to-br from-palette-pink/10 to-transparent
+							className="p-5 sm:p-8 lg:p-12 rise [--rise-delay:400ms] bg-gradient-to-br from-palette-pink/10 to-transparent
 	                         border-r border-white/10 lg:border-r lg:border-b-0 border-b"
 						>
-							<h3 className="font-display text-2xl font-bold mb-6 text-gradient-pink">
+							<h3 className="font-display text-2xl font-bold mb-6 text-white">
 								{copy.contact.heading}
 							</h3>
 
@@ -129,9 +143,14 @@ function ContactForm({ copy }: { copy: LandingCopy }) {
 										<p className="text-white font-bold text-sm">
 											{copy.contact.emailLabel}
 										</p>
-										<p className="text-white font-medium">
+										{/* Era texto plano: el correo del hero ya era un enlace, y
+										    este es el que se lee cuando el formulario falla. */}
+										<a
+											href={`mailto:${CONTACT_EMAIL}`}
+											className="focus-ring font-medium text-white transition-colors hover:text-palette-lime"
+										>
 											{CONTACT_EMAIL}
-										</p>
+										</a>
 									</div>
 								</div>
 
@@ -161,13 +180,13 @@ function ContactForm({ copy }: { copy: LandingCopy }) {
 						</div>
 
 						{/* Right Section - Contact Form */}
-						<div className="p-8 lg:p-12 rise [--rise-delay:400ms]">
+						<div className="p-5 sm:p-8 lg:p-12 rise [--rise-delay:400ms]">
 							<form
 								onSubmit={form.handleSubmit(onSubmit)}
 								className="space-y-4"
 							>
 								{/* Name and Email Row */}
-								<div className="grid md:grid-cols-2 gap-6">
+								<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
 									<div className="rise [--rise-delay:500ms]">
 										<Label
 											htmlFor="name"
@@ -263,7 +282,7 @@ function ContactForm({ copy }: { copy: LandingCopy }) {
 
 								{/* Consentimiento informado previo al envío */}
 								<div className="rise [--rise-delay:900ms]">
-									<label className="flex items-center gap-2 cursor-pointer">
+									<label className="flex items-start gap-3 cursor-pointer">
 										<input
 											type="checkbox"
 											{...form.register("consent")}
@@ -271,9 +290,10 @@ function ContactForm({ copy }: { copy: LandingCopy }) {
 											// `border-white/20` y `bg-transparent` no aplican: en un checkbox
 											// nativo (appearance: auto) los ignora el navegador. El color
 											// lo pone `accent-palette-lime` y el resto `color-scheme: dark`.
-											className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-palette-lime"
+											// 20px y no 16: es el control que habilita el envío.
+											className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer accent-palette-lime"
 										/>
-										<span className="text-xs leading-relaxed text-gray-400">
+										<span className="text-sm leading-relaxed text-gray-300">
 											{copy.contact.consentPrefix}{" "}
 											<Link
 												href="/privacidad"
@@ -293,8 +313,32 @@ function ContactForm({ copy }: { copy: LandingCopy }) {
 								</div>
 
 								{/* Turnstile: verifica el envío antes de llegar al endpoint. */}
-								<div className="rise [--rise-delay:950ms]">
-									<Turnstile key={turnstileKey} onToken={setTurnstileToken} />
+								<div className="rise [--rise-delay:950ms] space-y-2">
+									<p className="text-sm text-gray-400">
+										{copy.contact.turnstileHelp}
+									</p>
+									<Turnstile
+										key={turnstileKey}
+										onToken={(token) => {
+											setTurnstileToken(token);
+											setTurnstileStatus((status) =>
+												token ? "ready" : status === "failed" ? "failed" : "pending",
+											);
+										}}
+										onError={() => setTurnstileStatus("failed")}
+									/>
+									{turnstileStatus === "failed" && (
+										<p role="alert" className="text-sm text-red-400">
+											{copy.contact.turnstileFailed}{" "}
+											<a
+												href={`mailto:${CONTACT_EMAIL}`}
+												className="focus-ring underline decoration-white/20 hover:text-palette-lime"
+											>
+												{CONTACT_EMAIL}
+											</a>
+											.
+										</p>
+									)}
 								</div>
 
 								{/* Submit Button */}
@@ -303,12 +347,21 @@ function ContactForm({ copy }: { copy: LandingCopy }) {
 										variant={"green"}
 										className="w-full text-[16px] glow-lime-hover"
 										type="submit"
-										disabled={isSubmitting || !turnstileToken}
+										// Solo se bloquea mientras Cloudflare resuelve, y en ese
+										// estado el botón lo dice ("Checking…") en vez de quedarse
+										// verde apagado sin explicación. Si la verificación falla
+										// el botón vuelve y el submit lleva al correo directo.
+										disabled={isSubmitting || turnstileStatus === "pending"}
 									>
 										{isSubmitting ? (
 											<>
 												<Loader2 className="mr-2 h-5 w-5 animate-spin" />
 												{copy.contact.sending}
+											</>
+										) : turnstileStatus === "pending" ? (
+											<>
+												<Loader2 className="mr-2 h-5 w-5 animate-spin" />
+												{copy.contact.turnstileVerifying}
 											</>
 										) : (
 											<>

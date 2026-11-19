@@ -35,7 +35,7 @@ export function ToolGrid() {
 	}
 
 	return (
-		<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+		<div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
 			{TOOLS.map((tool) => (
 				<Link key={tool.href} href={tool.href}>
 					<article
@@ -45,7 +45,7 @@ export function ToolGrid() {
 							<div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/5 text-palette-lime">
 								<tool.icon size={20} />
 							</div>
-							<h2 className="font-display text-2xl font-bold text-gradient-primary">
+							<h2 className="font-display text-2xl font-bold text-white">
 								{tool.name}
 							</h2>
 						</div>

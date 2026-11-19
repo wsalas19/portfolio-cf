@@ -123,22 +123,12 @@
 	}
 
 	/* Gradient text utilities */
+	/* Solo queda el primario. Los degradados en títulos de tarjeta, prosa y
+	   párrafos partían una frase en tres colores sin que ninguno significara
+	   nada, así que se quitaron: el color de marca ya está en el H1 del hero y
+	   en los números del 404. */
 	.text-gradient-primary {
 		background: linear-gradient(135deg, #ffffff 0%, #fb8983 50%, #d4ff4d 100%);
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		background-clip: text;
-	}
-
-	.text-gradient-pink {
-		background: linear-gradient(135deg, #ffffff 0%, #fb8983 100%);
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		background-clip: text;
-	}
-
-	.text-gradient-lime {
-		background: linear-gradient(135deg, #ffffff 0%, #d4ff4d 100%);
 		-webkit-background-clip: text;
 		-webkit-text-fill-color: transparent;
 		background-clip: text;

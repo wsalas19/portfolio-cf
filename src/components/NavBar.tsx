@@ -12,12 +12,28 @@ import Image from "next/image";
 function NavBar() {
 	const [isOpen, setIsOpen] = useState(false);
 	const [isScrolled, setIsScrolled] = useState(false);
+	const [isHidden, setIsHidden] = useState(false);
 	const pathname = usePathname();
 
 	useEffect(() => {
+		let lastY = window.scrollY;
 		const handleScroll = () => {
-			setIsScrolled(window.scrollY > 20);
+			const y = window.scrollY;
+			setIsScrolled(y > 20);
+			// La píldora flota sobre el contenido, así que al bajar tapaba la
+			// franja donde viven los precios y los CTAs. Se esconde solo bajando:
+			// cualquier gesto hacia arriba la devuelve, cerca del tope nunca se
+			// va, y el foco de teclado la trae de vuelta (onFocusCapture).
+			// El umbral de 4px descarta el ruido de trackpads y ruedas.
+			if (Math.abs(y - lastY) > 4) {
+				if (y > 240 && y > lastY) setIsHidden(true);
+				else if (y < lastY) setIsHidden(false);
+				lastY = y;
+			}
 		};
+		// Al recargar a media página el estado inicial está en 0: una pasada
+		// ahora evita que la píldora arranque con el vidrio sin scroll.
+		handleScroll();
 		// passive: el handler solo lee scrollY, marcarlo así evita que el navegador
 		// espere a que termine antes de pintar el scroll.
 		window.addEventListener("scroll", handleScroll, { passive: true });
@@ -44,7 +60,7 @@ function NavBar() {
 		if (path.isRoute) {
 			return (
 				<Link
-					className="focus-ring font-medium hover:text-palette-lime transition-colors duration-300"
+					className="focus-ring whitespace-nowrap font-medium hover:text-palette-lime transition-colors duration-300"
 					href={path.path}
 				>
 					{path.name}
@@ -54,7 +70,7 @@ function NavBar() {
 
 		return (
 				<a
-				className={`focus-ring font-medium transition-colors duration-300 ${
+				className={`focus-ring whitespace-nowrap font-medium transition-colors duration-300 ${
 					isActive ? "text-palette-lime" : "hover:text-palette-lime"
 				}`}
 				href={path.path}
@@ -93,15 +109,24 @@ function NavBar() {
 	return (
 		<>
 			<nav
-				className={`fixed font-display font-bold bottom-6 py-3 left-1/2 -translate-x-1/2 w-[90%] md:w-[50%] rounded-2xl z-nav transition-[background-color,box-shadow,border-color] duration-300 ${
+				onFocusCapture={() => setIsHidden(false)}
+				// `env(safe-area-inset-bottom)` sube la píldora sobre el indicador
+				// de inicio del iPhone; en escritorio el valor es 0 y `bottom-6`
+				// queda idéntico. `translate-y-[…]` y el `-translate-x-1/2` de
+				// antes no chocan: Tailwind los escribe en variables distintas.
+				className={`fixed font-display font-bold bottom-[calc(1.5rem+env(safe-area-inset-bottom))] py-3 left-1/2 -translate-x-1/2 w-[90%] md:w-[50%] lg:w-max max-w-[95%] rounded-2xl z-nav transition-[transform,background-color,box-shadow,border-color] duration-300 motion-reduce:transition-none ${
+					isHidden && !isOpen
+						? "translate-y-[calc(100%+2.5rem)]"
+						: "translate-y-0"
+				} ${
 					isScrolled
 						? "glass-strong shadow-2xl glow-lime-hover"
 						: "glass shadow-lg "
 				}`}
 			>
-				<div className="flex items-center justify-between px-6 md:px-8">
+				<div className="flex items-center justify-between gap-6 px-6 md:px-8">
 
-					<Link href="/" className="flex items-center">
+					<Link href="/" className="flex shrink-0 items-center">
 						<span className="font-bold text-palette-lime">{"<"}</span>
 						<Image
 							src="/images/logo-page.png"
@@ -123,7 +148,9 @@ function NavBar() {
 
 
 					<button
-						className="lg:hidden text-white"
+						// 44×44 con `p-2.5` y el `-m-2.5` que devuelve el ícono a su sitio:
+						// el objetivo táctil de 24×24 quedaba por debajo del mínimo.
+						className="lg:hidden text-white p-2.5 -m-2.5"
 						onClick={() => setIsOpen(!isOpen)}
 						aria-expanded={isOpen}
 						aria-controls="mobile-menu"

@@ -215,6 +215,9 @@ export const es: LandingCopy = {
 		blocksValue: "7.761",
 	},
 	hero: {
+		headline: "De la idea a la aplicación en producción.",
+		proofYears: "{years} años construyendo software",
+		proofProjects: "{projects} proyectos y herramientas",
 		featuredWork: "Trabajo destacado",
 		bookACall: "Agenda",
 		emailMe: "Escríbeme",
@@ -248,6 +251,9 @@ export const es: LandingCopy = {
 		screenshotSuffix: "captura",
 	},
 	experienceSection: {
+		eyebrow: "Experiencia",
+		title: "De dónde viene el trabajo",
+		startLabel: "Construyendo desde",
 		showMore: "Ver más",
 		showLess: "Ver menos",
 	},
@@ -300,6 +306,12 @@ export const es: LandingCopy = {
 		consentLink: "Política de Tratamiento de Datos Personales",
 		send: "Enviar mensaje",
 		sending: "Enviando mensaje...",
+		turnstileHelp:
+			"Una verificación rápida evita el spam. El formulario se habilita apenas termina.",
+		turnstileVerifying: "Verificando...",
+		turnstileFailed: "No se pudo cargar la verificación. Igual puedes escribirme a",
+		turnstileErrorBody:
+			"La verificación de seguridad no terminó. Escríbeme directo, por favor.",
 		thanks: "¡Gracias, {name}!",
 		thanksBody: "Te respondo pronto.",
 		errorTitle: "Error",

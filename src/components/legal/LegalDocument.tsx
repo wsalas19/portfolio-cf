@@ -9,7 +9,7 @@ export function LegalDocument({ doc }: { doc: LegalDoc }) {
 		<main lang="es" className="px-4 py-12 pb-40 md:px-8 lg:px-16">
 			<div className="mx-auto max-w-4xl">
 				<header className="mb-4">
-					<h1 className="font-display text-4xl font-bold md:text-5xl text-gradient-primary mb-4">
+					<h1 className="font-display text-4xl font-bold md:text-5xl text-white mb-4">
 						{doc.title}
 					</h1>
 					<p className="text-sm text-gray-400">

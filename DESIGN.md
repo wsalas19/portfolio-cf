@@ -92,8 +92,10 @@ Rules:
 - Display sizes are hand-written (`text-4xl md:text-6xl lg:text-7xl` in the hero,
   `text-2xl md:text-4xl` in `SectionHeading`). The `--font-size` presets
   `display-xl/2xl/3xl` and the `.heading-*` utilities exist but are **unused**.
-- Gradient text: `.text-gradient-primary` (white→pink→lime), `.text-gradient-lime`,
-  `.text-gradient-pink`. Used for the hero H1, blog/tool card titles, the 404 digits.
+- Gradient text: `.text-gradient-primary` (white→pink→lime) is the only one left,
+  used on the hero H1 and the 404 digits. `.text-gradient-pink` and
+  `.text-gradient-lime` were removed — gradients on card titles, prose and body
+  copy split one sentence into three colours that carried no meaning.
 - Long-form reading is capped at `68ch` via `MEASURE` in `BlogPost.tsx:21`;
   data/maps keep the full width.
 
@@ -222,6 +224,13 @@ drift this rule prevents.
   `py-10` inside top/bottom borders (`border-white/10`).
 - Hairlines: `border-white/10` almost everywhere; `border-white/15–20` on inputs
   and secondary buttons.
+- Every `grid` that switches columns at a breakpoint writes its base column
+  explicitly: `grid grid-cols-1 md:grid-cols-2`, never a bare `grid md:grid-cols-2`.
+  Without it the implicit track is `minmax(min-content, max-content)`, so one
+  wide child (a 300px Turnstile iframe, an image, a long unbroken string) pushes
+  the column past the container and the overflow gets clipped — which reads as
+  broken padding. Same reason explicit `fr` templates use `minmax(0,1fr)`:
+  a bare `1fr` is `minmax(auto,1fr)` and has the same floor.
 
 ## 11. Imagery
 

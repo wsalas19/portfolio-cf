@@ -39,7 +39,7 @@ export function BlogCard({ post, className, labels = en.blogCard }: BlogCardProp
 			>
 				<div className="flex flex-col gap-2">
 
-        <h2 className="font-display text-2xl font-bold text-gradient-primary">
+        <h2 className="font-display text-2xl font-bold text-white">
           {post.title}
         </h2>
 

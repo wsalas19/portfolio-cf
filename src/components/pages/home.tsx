@@ -2,13 +2,13 @@ import ContactForm from "../ContactForm";
 import Experience from "../Experience";
 import ProjectShowcase from "../ProjectShowcase";
 import ClickSpark from "../ClickSpark";
-import FaultyTerminal from "../FaultyTerminal";
 import CtaBand from "../landing/CtaBand";
 import Faq from "../landing/Faq";
 import Hero from "../landing/Hero";
 import Journal from "../landing/Journal";
 import Services from "../landing/Services";
 import Stats from "../landing/Stats";
+import TerminalBackdrop from "../landing/TerminalBackdrop";
 import Testimonials from "../landing/Testimonials";
 import { getLandingContent, getLandingCopy } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/types";
@@ -20,7 +20,7 @@ import type { Locale } from "@/lib/i18n/types";
  * oferta, después los nombres y las fechas que la respaldan.
  *
  * `Testimonials` va entre `Journal` y `Faq`; las citas viven en
- * `constants.ts` y se publican como borradores hasta que cada persona apruebe.
+ * `constants.ts` y están aprobadas por escrito por cada persona.
  *
  * El idioma entra por `locale`; acá se resuelve a `copy` (la prosa) y a los datos
  * neutrales ya hidratados, y se reparte a cada sección.
@@ -42,28 +42,10 @@ export default function Home({ locale }: { locale: Locale }) {
 				{/* `-z-10`: el canvas hace `clearColor(0,0,0,1)`, o sea negro opaco, y al ser
 				    `fixed` se pintaba por encima de todo el contenido estático. Antes no se
 				    notaba porque las secciones venían de framer-motion, que las promueve a
-				    capas compuestas; las de `.rise` son CSS puro y quedaban debajo. */}
-				<div className="fixed inset-0 -z-10">
-					<FaultyTerminal
-						scale={2.2}
-						gridMul={[2, 1]}
-						digitSize={1.5}
-						timeScale={0.5}
-						pause={false}
-						scanlineIntensity={0.5}
-						glitchAmount={1}
-						flickerAmount={1}
-						noiseAmp={0.8}
-						chromaticAberration={0}
-						dither={0}
-						curvature={0.26}
-						tint="#d4ff4d"
-						mouseReact
-						mouseStrength={0.5}
-						pageLoadAnimation
-						brightness={0.18}
-					/>
-				</div>
+				    capas compuestas; las de `.rise` son CSS puro y quedaban debajo.
+				    El componente es cliente porque lee `prefers-reduced-motion` y pausa el
+				    shader; ver `TerminalBackdrop`. */}
+				<TerminalBackdrop />
 				<Hero copy={copy} profile={profile} projects={projects} />
 				<Stats copy={copy} profile={profile} projects={projects} />
 				<ProjectShowcase copy={copy} projects={projects} />

@@ -210,6 +210,9 @@ export const en: LandingCopy = {
 		blocksValue: "7,761",
 	},
 	hero: {
+		headline: "From brief to a web app in production.",
+		proofYears: "{years} years building software",
+		proofProjects: "{projects} projects and tools",
 		featuredWork: "Featured work",
 		bookACall: "Book a call",
 		emailMe: "Email me",
@@ -246,6 +249,9 @@ export const en: LandingCopy = {
 		screenshotSuffix: "screenshot",
 	},
 	experienceSection: {
+		eyebrow: "Experience",
+		title: "Where the work comes from",
+		startLabel: "Building since",
 		showMore: "Show More",
 		showLess: "Show Less",
 	},
@@ -299,6 +305,12 @@ export const en: LandingCopy = {
 		consentLink: "Política de Tratamiento de Datos Personales",
 		send: "Send Message",
 		sending: "Sending Message...",
+		turnstileHelp:
+			"A quick check keeps the spam out. The form unlocks as soon as it finishes.",
+		turnstileVerifying: "Checking...",
+		turnstileFailed: "The check could not load. You can still email me at",
+		turnstileErrorBody:
+			"The security check did not finish. Please email me directly instead.",
 		thanks: "Thanks {name}!",
 		thanksBody: "I'll get back to you soon.",
 		errorTitle: "Error",

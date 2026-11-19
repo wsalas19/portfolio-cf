@@ -208,7 +208,7 @@ export default function TwitterThreadsPage() {
 
         {/* How it works */}
         <h2 className="mt-16 text-center text-2xl font-bold">How it works</h2>
-        <ol className="mt-10 grid gap-12 md:grid-cols-3 md:gap-8">
+        <ol className="mt-10 grid grid-cols-1 gap-12 md:grid-cols-3 md:gap-8">
           {steps.map(({ icon: Icon, title, desc }, i) => (
             <li key={title} className="relative text-center">
               {/* Hilo que encadena los pasos: sólo donde van en fila, porque en móvil

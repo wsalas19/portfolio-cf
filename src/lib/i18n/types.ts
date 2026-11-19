@@ -35,6 +35,13 @@ export interface LandingCopy {
 		blocksValue: string;
 	};
 	hero: {
+		// La oferta va en el H1 y el nombre firma debajo: antes el único tipo
+		// grande de la página decía quién es y no qué se compra.
+		headline: string;
+		// `{years}` y `{projects}` los rellena `fillTemplate` con datos derivados
+		// (`experienceStart` y el largo de `projects`), no con números escritos.
+		proofYears: string;
+		proofProjects: string;
 		featuredWork: string;
 		bookACall: string;
 		emailMe: string;
@@ -66,10 +73,16 @@ export interface LandingCopy {
 		close: string;
 		screenshotSuffix: string;
 	};
-	// Experience.tsx no renderiza un SectionHeading: su copy real son los botones
-	// de expandir la línea de tiempo. El año de origen no está acá porque no es
-	// prosa: sale de `PROFILE.experienceStart`.
-	experienceSection: { showMore: string; showLess: string };
+	// Experience.tsx renderiza un SectionHeading desde que la nav enlaza a
+	// `#experience`; antes la sección era una línea de tiempo sin título. El año
+	// de origen no se escribe: viene de `PROFILE.experienceStart`.
+	experienceSection: {
+		eyebrow: string;
+		title: string;
+		startLabel: string;
+		showMore: string;
+		showLess: string;
+	};
 	journalSection: {
 		eyebrow: string;
 		title: string;

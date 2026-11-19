@@ -6,8 +6,8 @@ import type { Testimonial } from "@/lib/types/globals";
 
 /**
  * Las citas de `constants.ts` llegan hidratadas por prop (no se traducen: una
- * cita traducida deja de ser una cita) y se muestran tal cual; son borradores
- * hasta que cada persona dé el visto bueno por escrito. El componente sigue
+ * cita traducida deja de ser una cita) y se muestran tal cual. Cada persona dio
+ * el visto bueno por escrito, así que se publican; el componente sigue
  * devolviendo `null` si el array queda vacío.
  *
  * El `id` es el ancla para el enlace profundo, pero `paths` todavía no lo
@@ -30,7 +30,7 @@ function Testimonials({
 					title={copy.testimonialsSection.title}
 				/>
 
-				<div className="grid gap-6 md:grid-cols-2">
+				<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
 					{testimonials.map((testimonial) => (
 						<figure
 							key={testimonial.name}

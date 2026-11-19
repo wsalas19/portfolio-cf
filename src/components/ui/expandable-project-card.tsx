@@ -36,7 +36,7 @@ export function ExpandableProjectCard({ project, index, labels }: ExpandableProj
 				type="button"
 				layoutId={layoutId}
 				onClick={openDialog}
-				className="focus-ring group grid w-full cursor-pointer grid-cols-[72px_1fr] items-center gap-x-4 gap-y-3 border-b border-white/10 py-5 text-left transition-colors hover:bg-white/[0.04] md:grid-cols-[88px_1fr_auto_24px] md:gap-6"
+				className="focus-ring group grid w-full cursor-pointer grid-cols-[72px_minmax(0,1fr)] items-center gap-x-4 gap-y-3 border-b border-white/10 py-5 text-left transition-colors hover:bg-white/[0.04] md:grid-cols-[88px_minmax(0,1fr)_auto_24px] md:gap-6"
 			>
 				<motion.div
 					layoutId={`image-container-${layoutId}`}
@@ -158,7 +158,7 @@ export function ExpandableProjectCard({ project, index, labels }: ExpandableProj
 									layoutId={`title-${layoutId}`}
 									className="mb-3"
 								>
-									<h3 className="font-display text-2xl sm:text-3xl uppercase font-bold text-gradient-pink">
+									<h3 className="font-display text-2xl sm:text-3xl uppercase font-bold text-white">
 										{project.title}
 									</h3>
 								</motion.div>

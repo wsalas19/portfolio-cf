@@ -25,7 +25,7 @@ function Services({ copy, serviceTracks }: ServicesProps) {
 					description={copy.servicesSection.description}
 				/>
 
-				<div className="grid gap-6 lg:grid-cols-3">
+				<div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
 					{serviceTracks.map((track, index) => (
 						<div
 							key={track.id}

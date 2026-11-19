@@ -36,7 +36,7 @@ function ExperienceCard({
 			>
 				<div className="glass p-4 rounded-lg transition-all duration-300 border border-white/10">
 					<div className="flex flex-wrap items-center justify-between mb-2">
-						<h3 className="flex items-center gap-3 font-display text-2xl font-bold text-gradient-pink">
+						<h3 className="flex items-center gap-3 font-display text-2xl font-bold text-white">
 							{role}
 						</h3>
 
@@ -59,7 +59,10 @@ function ExperienceCard({
 						{startDate} - {endDate}
 					</time>
 
-					<p className="mb-4 text-gray-300 text-pretty">{description}</p>
+					{/* `34rem` y no `65ch`: `ch` es el ancho del "0" de la fuente, y en Inter
+					    a 16px son ~10px, así que `65ch` daba 656px ≈ 82 caracteres reales.
+					    34rem (544px) sí deja la línea en el rango de 65–70. */}
+					<p className="mb-4 max-w-[34rem] text-gray-300 text-pretty">{description}</p>
 
 					{technologies.length > 0 && (
 						<div className="flex flex-wrap gap-2 mt-4">
