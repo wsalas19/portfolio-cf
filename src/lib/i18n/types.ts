@@ -83,7 +83,7 @@ export interface LandingCopy {
 		showMore: string;
 		showLess: string;
 	};
-	journalSection: {
+	blogSection: {
 		eyebrow: string;
 		title: string;
 		description: string;

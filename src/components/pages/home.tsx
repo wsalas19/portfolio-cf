@@ -5,7 +5,7 @@ import ClickSpark from "../ClickSpark";
 import CtaBand from "../landing/CtaBand";
 import Faq from "../landing/Faq";
 import Hero from "../landing/Hero";
-import Journal from "../landing/Journal";
+import BlogSection from "../landing/BlogSection";
 import Services from "../landing/Services";
 import Stats from "../landing/Stats";
 import TerminalBackdrop from "../landing/TerminalBackdrop";
@@ -19,7 +19,7 @@ import type { Locale } from "@/lib/i18n/types";
  * conversión. `Experience` va después de `Services` a propósito: primero la
  * oferta, después los nombres y las fechas que la respaldan.
  *
- * `Testimonials` va entre `Journal` y `Faq`; las citas viven en
+ * `Testimonials` va entre `BlogSection` y `Faq`; las citas viven en
  * `constants.ts` y están aprobadas por escrito por cada persona.
  *
  * El idioma entra por `locale`; acá se resuelve a `copy` (la prosa) y a los datos
@@ -51,7 +51,7 @@ export default function Home({ locale }: { locale: Locale }) {
 				<ProjectShowcase copy={copy} projects={projects} />
 				<Services copy={copy} serviceTracks={serviceTracks} />
 				<Experience copy={copy} jobs={jobs} />
-				<Journal copy={copy} />
+				<BlogSection copy={copy} />
 				<Testimonials copy={copy} testimonials={testimonials} />
 				<Faq copy={copy} faq={faq} />
 				<CtaBand copy={copy} />

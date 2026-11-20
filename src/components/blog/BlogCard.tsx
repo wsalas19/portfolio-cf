@@ -10,7 +10,7 @@ interface BlogCardProps {
   post: BlogPost;
   className?: string;
   // La página `/blog` sigue en inglés y no pasa nada: el default es `en`. La
-  // landing traduce, así que `Journal` sí le pasa las etiquetas.
+  // landing traduce, así que `BlogSection` sí le pasa las etiquetas.
   labels?: LandingCopy["blogCard"];
 }
 

@@ -16,7 +16,7 @@ work is shown rather than described.
 
 | Route | What it is |
 |---|---|
-| `/` | Landing: hero, stats, selected work, services, experience, journal, FAQ, CTA, contact |
+| `/` | Landing: hero, stats, selected work, services, experience, blog, FAQ, CTA, contact |
 | `/blog` · `/blog/[slug]` | Articles written in Markdown, no CMS |
 | `/tools` | Index of the free tools |
 | `/twitter-threads` | X/Twitter thread reader (needs `TWTAPI_KEY`) |

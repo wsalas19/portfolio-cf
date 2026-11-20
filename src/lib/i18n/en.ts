@@ -255,8 +255,8 @@ export const en: LandingCopy = {
 		showMore: "Show More",
 		showLess: "Show Less",
 	},
-	journalSection: {
-		eyebrow: "Journal",
+	blogSection: {
+		eyebrow: "Blog",
 		title: "Writing, when something is worth explaining",
 		description:
 			"Longer pieces about the parts of the work that do not fit in a caption.",

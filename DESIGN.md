@@ -250,7 +250,7 @@ drift this rule prevents.
 
 Composed: `SectionHeading`, `NavBar` (floating glass pill), `Footer`,
 `ScrollButton`, `DownloadResume`, `Hero`, `Stats`, `ProjectShowcase`, `Services`,
-`Experience`/`ExperienceCard`, `Journal`/`BlogCard`, `Testimonials`, `Faq`,
+`Experience`/`ExperienceCard`, `BlogSection`/`BlogCard`, `Testimonials`, `Faq`,
 `CtaBand`, `ContactForm`, `ZoomImage`, `FaultyTerminal`, `ClickSpark`.
 
 ---
@@ -403,7 +403,7 @@ is single-language by intent:
 - **Blog articles** are mostly English — that is where the search traffic is.
 - **`/visor-credito`** and the **legal documents** are Spanish — Colombian law and
   a Colombian audience.
-- **`/tools`** and the journal are a personal shelf for tools and thoughts, not a
+- **`/tools`** and the blog are a personal shelf for tools and thoughts, not a
   sales surface, so they get one language each.
 
 So a page's language is chosen for **that page's audience or SEO case**, not for
