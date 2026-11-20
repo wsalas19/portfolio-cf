@@ -17,6 +17,7 @@ export const metadata: Metadata = {
 		"Frontend",
 		"Backend",
 	],
+	alternates: { canonical: "/blog" },
 	openGraph: {
 		title: "Blog | William Salas",
 		description:

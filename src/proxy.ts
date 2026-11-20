@@ -2,11 +2,12 @@ import { NextResponse, type NextRequest } from "next/server";
 
 export function proxy(request: NextRequest): NextResponse {
 	const host = request.headers.get("host") ?? "";
+	const url = new URL(request.url);
 
-	// `www` es el host canónico. El apex se queda con un 308 para no duplicar
-	// señales de SEO ni partir cookies entre dos hosts.
-	if (host === "wsalas.com") {
-		const url = new URL(request.url);
+	// `www` + https es el único origen canónico. El apex y el esquema http se
+	// quedan con un 308 para no duplicar señales de SEO ni partir cookies entre
+	// hosts. `http://www` llegaba a servir 200 porque solo se miraba el host.
+	if (host === "wsalas.com" || (host === "www.wsalas.com" && url.protocol === "http:")) {
 		url.protocol = "https:";
 		url.host = "www.wsalas.com";
 		return NextResponse.redirect(url, 308);

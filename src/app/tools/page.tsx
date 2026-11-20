@@ -5,6 +5,7 @@ export const metadata: Metadata = {
 	title: "Tools | William Salas",
 	description:
 		"Free browser tools by William Salas: X/Twitter thread reader and a Colombian mortgage credit simulator.",
+	alternates: { canonical: "/tools" },
 	openGraph: {
 		title: "Tools | William Salas",
 		description:
